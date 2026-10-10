@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -13,6 +14,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Check,
+  Download,
   ImagePlus,
   RotateCcw,
   ScanLine,
@@ -24,11 +26,16 @@ import {
 import {
   createDepth,
   createJob,
+  createRestyle,
   getDepth,
   getJob,
+  getRestyle,
   type DepthResult,
   type Result,
+  type RestyleResult,
+  type StyleId,
 } from "./api";
+import { exportFrame } from "./exportFrame";
 const SpatialFrameScene = lazy(() =>
   import("./SpatialFrameScene").then((module) => ({
     default: module.SpatialFrameScene,
@@ -43,6 +50,17 @@ const stageLabels: Record<string, string> = {
   queued: "Waiting for the image engine",
   preparing: "Preparing your image",
   segmenting: "Finding your subject",
+};
+const styleOptions: { id: StyleId; name: string; detail: string }[] = [
+  { id: "dreamy-pink", name: "Dreamy Pink", detail: "Pink, lavender, soft clouds" },
+  { id: "golden-hour", name: "Golden Hour", detail: "Warm natural sunset" },
+  { id: "cinematic-night", name: "Cinematic Night", detail: "Deep blue, subtle stars" },
+];
+const restyleStageLabels: Record<string, string> = {
+  queued: "Waiting for the image engine",
+  "loading-model": "Loading the local AI model",
+  generating: "Painting a new background",
+  compositing: "Protecting the original subject",
 };
 
 function App() {
@@ -63,13 +81,22 @@ function App() {
   const [showMask, setShowMask] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState<StyleId>("dreamy-pink");
+  const [styles, setStyles] = useState<Partial<Record<StyleId, RestyleResult>>>({});
+  const [showBefore, setShowBefore] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generationStage, setGenerationStage] = useState("queued");
+  const [generationError, setGenerationError] = useState("");
+  const [exportError, setExportError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const photoStageRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
+  const generationRequestRef = useRef(0);
 
   useEffect(
     () => () => {
       requestRef.current += 1;
+      generationRequestRef.current += 1;
     },
     [],
   );
@@ -122,12 +149,19 @@ function App() {
       return;
     }
     const request = ++requestRef.current;
+    generationRequestRef.current += 1;
     setFilename(file.name);
     setError("");
     setResult(null);
     setDepthResult(null);
     setDepthError("");
     setSpatialReady(false);
+    setStyles({});
+    setSelectedStyle("dreamy-pink");
+    setShowBefore(false);
+    setGenerating(false);
+    setGenerationError("");
+    setExportError("");
     setHolding(false);
     setStage("queued");
     setMode("processing");
@@ -173,11 +207,46 @@ function App() {
 
   function reset() {
     requestRef.current += 1;
+    generationRequestRef.current += 1;
     setResult(null);
     setDepthResult(null);
     setHolding(false);
     setError("");
     setMode("upload");
+  }
+
+  async function generateStyle() {
+    if (!result || generating) return;
+    if (styles[selectedStyle]) {
+      setShowBefore(false);
+      return;
+    }
+    const request = ++generationRequestRef.current;
+    const style = selectedStyle;
+    setGenerationError("");
+    setGenerationStage("queued");
+    setGenerating(true);
+    try {
+      await createRestyle(result.id, style);
+      while (request === generationRequestRef.current) {
+        const job = await getRestyle(result.id, style);
+        if (request !== generationRequestRef.current) return;
+        setGenerationStage(job.stage);
+        if (job.status === "complete" && job.result) {
+          setStyles((current) => ({ ...current, [style]: job.result }));
+          setSelectedStyle(style);
+          setShowBefore(false);
+          setGenerating(false);
+          return;
+        }
+        if (job.status === "failed") throw new Error(job.error || "Background generation failed.");
+        await new Promise((resolve) => setTimeout(resolve, 1400));
+      }
+    } catch (cause) {
+      if (request !== generationRequestRef.current) return;
+      setGenerationError(cause instanceof Error ? cause.message : "Background generation failed.");
+      setGenerating(false);
+    }
   }
 
   function startHold(event: PointerEvent<HTMLDivElement>) {
@@ -217,7 +286,12 @@ function App() {
     : 0;
   const yShift = result
     ? clamp(
-        -0.08 - zoom * (result.composition.focusY - 0.5),
+        result.subjectBounds[1] <= result.height * 0.04
+          ? Math.max(
+              -0.08 - zoom * (result.composition.focusY - 0.5),
+              0.02 - (1 - zoom) / 2 - zoom * result.subjectBounds[1] / result.height,
+            )
+          : -0.08 - zoom * (result.composition.focusY - 0.5),
         -verticalLimit,
         verticalLimit,
       )
@@ -245,6 +319,31 @@ function App() {
       result.subjectBounds[2] >= result.width * 0.98 ||
       result.subjectBounds[3] >= result.height * 0.98
     : false;
+  const styledResult = styles[selectedStyle];
+  const showingStyled = Boolean(styledResult && !showBefore);
+  const visibleDepth = useMemo(
+    () => depthResult && showingStyled && styledResult
+      ? { ...depthResult, backgroundUrl: styledResult.renderBackgroundUrl }
+      : depthResult,
+    [depthResult, showingStyled, styledResult],
+  );
+  const visibleBackgroundUrl = showingStyled && styledResult
+    ? (depthResult ? styledResult.renderBackgroundUrl : styledResult.backgroundUrl)
+    : (depthResult?.backgroundUrl || result?.sourceUrl || "");
+
+  useEffect(() => {
+    if (visibleDepth) setSpatialReady(false);
+  }, [visibleDepth]);
+
+  async function downloadPng() {
+    if (!result || !styledResult) return;
+    setExportError("");
+    try {
+      await exportFrame(result, styledResult.backgroundUrl, zoom, xShift, yShift, filename);
+    } catch (cause) {
+      setExportError(cause instanceof Error ? cause.message : "Could not export PNG.");
+    }
+  }
 
   return (
     <div
@@ -324,17 +423,15 @@ function App() {
               <div className="scene-layer background-layer">
                 <div className="background-content">
                   <img
-                    src={
-                      depthResult ? depthResult.backgroundUrl : result.sourceUrl
-                    }
+                    src={visibleBackgroundUrl}
                     style={backgroundFallbackStyle}
                     alt="Photograph background"
                     draggable="false"
                   />
-                  {depthResult && !depthError && (
+                  {visibleDepth && !depthError && (
                     <Suspense fallback={null}>
                       <SpatialFrameScene
-                        depth={depthResult}
+                        depth={visibleDepth}
                         stage={photoStageRef}
                         active={holding}
                         travelScale={touchesImageEdge ? 0.45 : 1}
@@ -366,6 +463,44 @@ function App() {
             <div className="photo-corner photo-corner-tl" />
             <div className="photo-corner photo-corner-br" />
           </div>
+          <section className="style-studio" aria-label="AI background styles">
+            <div className="style-studio-heading">
+              <div>
+                <span className="eyebrow">AI BACKGROUND STUDIO</span>
+                <h2>Choose the atmosphere.</h2>
+              </div>
+              <span className="style-studio-note">Your original subject stays in the frame.</span>
+            </div>
+            <div className="style-choices">
+              {styleOptions.map((option) => (
+                <button
+                  key={option.id}
+                  className={`style-choice ${selectedStyle === option.id ? "selected" : ""}`}
+                  onClick={() => { setSelectedStyle(option.id); setShowBefore(false); setGenerationError(""); }}
+                  aria-pressed={selectedStyle === option.id}
+                >
+                  <span className={`style-swatch ${option.id}`} />
+                  <span><strong>{option.name}</strong><small>{option.detail}</small></span>
+                  {styles[option.id] && <Check size={16} aria-label="Generated" />}
+                </button>
+              ))}
+            </div>
+            <div className="style-actions">
+              <button className="style-primary" onClick={() => void generateStyle()} disabled={generating}>
+                {generating ? <span className="loading-spinner" /> : <Sparkles size={17} />}
+                {generating ? (restyleStageLabels[generationStage] || "Generating your background") : styledResult ? "Show result" : "Generate background"}
+              </button>
+              <button className="action-button" onClick={() => setShowBefore(!showBefore)} disabled={!styledResult}>
+                {showBefore ? "View after" : "View before"}
+              </button>
+              <button className="action-button" onClick={() => void downloadPng()} disabled={!styledResult || generating}>
+                <Download size={17} /> Download PNG
+              </button>
+            </div>
+            {generating && <p className="style-status" role="status">{restyleStageLabels[generationStage] || "Generating"} · First use downloads model weights and can take several minutes.</p>}
+            {generationError && <p className="style-error" role="alert">{generationError}</p>}
+            {exportError && <p className="style-error" role="alert">{exportError}</p>}
+          </section>
           <div className="preview-footer">
             <div className="result-caption">
               <span className="result-count">01 / 01</span>

@@ -551,6 +551,78 @@ input:focus-visible {
   border-right: 1px solid;
   border-bottom: 1px solid;
 }
+.style-studio {
+  max-width: 1050px;
+  margin: 24px auto 0;
+  padding: 22px 24px;
+  border: 1px solid #ffffff19;
+  border-radius: 11px;
+  background: #1c1e1f;
+}
+.style-studio-heading,
+.style-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.style-studio-heading h2 {
+  margin: 5px 0 0;
+  font: 600 18px "Manrope", sans-serif;
+  letter-spacing: -0.03em;
+}
+.style-studio-note,
+.style-choice small,
+.style-status {
+  color: #959e98;
+  font-size: 11px;
+}
+.style-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 20px 0;
+}
+.style-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px;
+  text-align: left;
+  color: #eeeae1;
+  background: #252829;
+  border: 1px solid #ffffff1b;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.style-choice.selected { border-color: #d7bd97; background: #30302d; }
+.style-choice > span:nth-child(2) { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.style-choice strong { font-size: 12px; font-weight: 600; }
+.style-choice small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.style-swatch { flex: 0 0 27px; height: 27px; border-radius: 5px; }
+.style-swatch.dreamy-pink { background: linear-gradient(150deg, #9e739d, #e6aeae 65%, #f6d0ae); }
+.style-swatch.golden-hour { background: linear-gradient(150deg, #6c7b92, #dca267 60%, #f3ce83); }
+.style-swatch.cinematic-night { background: linear-gradient(150deg, #111a30, #314967 65%, #647a88); }
+.style-actions { justify-content: flex-start; flex-wrap: wrap; }
+.style-actions .action-button { padding: 11px 14px; border: 1px solid #ffffff20; }
+.style-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 18px;
+  color: #1b1c1b;
+  background: #e8d8bd;
+  border: 0;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.style-primary:disabled,
+.style-actions .action-button:disabled { opacity: .48; cursor: not-allowed; }
+.style-status { margin: 16px 0 0; }
+.style-error { margin: 14px 0 0; color: #f6a7a1; font-size: 12px; }
 .preview-footer {
   display: flex;
   align-items: center;
@@ -712,6 +784,8 @@ input:focus-visible {
   .zoom-control {
     min-width: 0;
   }
+  .style-choices { grid-template-columns: 1fr; }
+  .style-studio-note { display: none; }
 }
 @media (max-width: 600px) {
   .topbar {

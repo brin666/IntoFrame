@@ -51,12 +51,17 @@ def _sky_only(generated: Image.Image, style: str) -> Image.Image:
     w = round(h * generated.width / generated.height)
     x = (generated.width - w) // 2
     sky = generated.crop((x, 0, x + w, h)).resize(generated.size, Image.Resampling.LANCZOS)
-    if style != "cinematic-night":
+    if style == "dreamy-pink":
         return sky
-    # The small inpainting checkpoint often adds an orange horizon even for a
-    # night prompt. Keep its generated cloud/star texture and grade it cool.
     rgb = np.asarray(sky.convert("RGB"), dtype=np.float32)
     luma = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    if style == "golden-hour":
+        # Retain generated cloud luminance while making the preset consistently warm.
+        warm = np.stack((45 + luma * 0.95, 20 + luma * 0.74, 18 + luma * 0.52), axis=-1)
+        graded = warm * 0.85 + rgb * 0.15
+        return Image.fromarray(np.uint8(np.clip(graded, 0, 255)), "RGB")
+    # The small checkpoint often adds an orange horizon even for a night prompt.
+    # Keep its generated cloud/star texture and grade it cool.
     graded = np.stack((5 + luma * 0.25, 12 + luma * 0.38, 32 + luma * 0.64), axis=-1)
     stars = np.clip((luma - 185) / 55, 0, 1)[..., None] * 0.7
     graded = graded * (1 - stars) + luma[..., None] * stars

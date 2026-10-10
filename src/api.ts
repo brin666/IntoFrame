@@ -41,6 +41,25 @@ export interface DepthJob {
   error?: string;
 }
 
+export type StyleId = "dreamy-pink" | "golden-hour" | "cinematic-night";
+
+export interface RestyleResult {
+  jobId: string;
+  style: StyleId;
+  backgroundUrl: string;
+  renderBackgroundUrl: string;
+  compositeUrl: string;
+  model: string;
+  metrics: { seconds: number; modelSize: [number, number] };
+}
+
+export interface RestyleJob {
+  status: "processing" | "complete" | "failed";
+  stage: string;
+  result?: RestyleResult;
+  error?: string;
+}
+
 async function json<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok)
@@ -71,4 +90,18 @@ export async function createDepth(id: string): Promise<void> {
 
 export async function getDepth(id: string): Promise<DepthJob> {
   return json<DepthJob>(await fetch(`/api/depth/${id}`));
+}
+
+export async function createRestyle(id: string, style: StyleId): Promise<void> {
+  await json(
+    await fetch("/api/restyle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: id, style }),
+    }),
+  );
+}
+
+export async function getRestyle(id: string, style: StyleId): Promise<RestyleJob> {
+  return json<RestyleJob>(await fetch(`/api/restyle/${id}/${style}`));
 }

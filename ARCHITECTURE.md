@@ -12,12 +12,19 @@ The workspace was empty at project start. The development PC has Node 24, Python
 | Image geometry | One canonical EXIF-corrected RGB image, longest edge ≤1600 px; mask resized to its exact width/height | All pixels stay in one coordinate system. No web-layer guessing about EXIF or image fit. |
 | Static renderer | Two aligned image layers and stationary letterbox bars | The background cannot paint over the bars; the transparent foreground can. The same transform is applied to both layers, preventing duplicate silhouettes while stationary. |
 | Stage 2 renderer | Three.js depth mesh for the filled scene; DOM foreground cutout above DOM bars | Perspective camera motion provides depth-dependent pixel travel while the existing break-the-frame stacking remains reliable. |
+| AI style MVP | Local SD1.5 Inpainting sky generation, original subject mask composite | Serialized, no paid API calls, preserves subject RGB and keeps the existing pop-out and depth renderer. |
 
 ## Data contract
 
 `POST /api/jobs` accepts multipart `file` and returns a job ID. `GET /api/jobs/{id}` returns `processing`, `complete`, or `failed` and the current stage. A completed result gives `sourceUrl`, `maskUrl`, `subjectUrl`, `width`, `height`, `subjectBounds`, and `composition` (`scale`, `focusX`, `focusY`). The image and mask are at the same resolution; bounds are source pixel coordinates. Files are under `backend/data/<job-id>/`.
 
 `POST /api/depth` accepts `{"jobId":"..."}` only after segmentation completes. `GET /api/depth/{id}` reports depth processing status and then returns native `depth.png`, padded `render-depth.png`, and padded `background.webp` with source and render dimensions, padding, and representative foreground depth. PNG grayscale 0 means farther, 255 means nearer. Percentile normalization and Gaussian smoothing produce a control signal, not metric distance. The original mask and depth retain one native coordinate system; the padded image and depth retain a second shared coordinate system.
+
+`POST /api/restyle` accepts `{"jobId":"...","style":"dreamy-pink"}` after segmentation. Styles are `dreamy-pink`, `golden-hour`, and `cinematic-night`. `GET /api/restyle/{id}/{style}` reports queued/loading/generating/compositing status, then URLs for native generated `background.webp`, source-resolution `composite.png`, and padded `render-background.webp`. The same generated background is used for the static preview, depth mesh texture, and PNG export. The original `subject.png` stays above film bars.
+
+## AI style pipeline
+
+BiRefNet supplies the alpha mask; the local SD1.5 inpainting checkpoint generates a whole-sky underlay at a bounded ~640 px input size. A generated-sky crop suppresses unwanted horizon/ground, and golden/night styles receive warm/cool grades. The underlay is resized to source dimensions. The original RGB subject is composited onto it with the original alpha mask. The generated full sky already exists behind the subject, so the camera can reveal a small region without a second building. This is genuine diffusion generation plus conventional compositing; it does not preserve arbitrary original background objects or relight the subject. All AI inference is serialized through one API semaphore, and Diffusers uses CPU offload on the 8 GB GPU.
 
 ## Stage 1 rendering geometry
 

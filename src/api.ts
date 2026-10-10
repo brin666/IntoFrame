@@ -49,8 +49,10 @@ export interface RestyleResult {
   backgroundUrl: string;
   renderBackgroundUrl: string;
   compositeUrl: string;
+  subjectUrl: string;
+  backgroundGeometry: "sky-plane";
   model: string;
-  metrics: { seconds: number; modelSize: [number, number] };
+  metrics: { seconds: number; modelSize: [number, number]; seed: number; edgePixelsChanged: number };
 }
 
 export interface RestyleJob {

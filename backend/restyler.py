@@ -95,8 +95,13 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
     if style == "cinematic-night":
         negative += ", sunrise, sunset, orange, yellow, brown, desert, daytime, sun"
     start = time.perf_counter()
+    model_was_loaded = _pipeline is not None
+    load_seconds = 0.0
+    inference_seconds = 0.0
     try:
         pipeline = _load_pipeline()
+        load_seconds = time.perf_counter() - start
+        inference_start = time.perf_counter()
         output = pipeline(
             prompt=prompt,
             negative_prompt=negative,
@@ -110,6 +115,7 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
         if output.nsfw_content_detected and any(output.nsfw_content_detected):
             raise RuntimeError("The image model declined this result. Try another photo.")
         generated = output.images[0]
+        inference_seconds = time.perf_counter() - inference_start
     except torch.cuda.OutOfMemoryError as exc:
         torch.cuda.empty_cache()
         raise RuntimeError("The GPU ran out of memory during background generation. Close other GPU apps and retry.") from exc
@@ -121,4 +127,13 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
     generated = _sky_only(generated.convert("RGB"), style).resize(source.size, Image.Resampling.LANCZOS)
     background = generated
     composite = Image.composite(source, background, mask)
-    return background, composite, {"seconds": round(time.perf_counter() - start, 1), "modelSize": list(target), "seed": seed}
+    return background, composite, {
+        "seconds": round(time.perf_counter() - start, 2),
+        "loadSeconds": round(load_seconds, 2),
+        "inferenceSeconds": round(inference_seconds, 2),
+        "modelWasLoaded": model_was_loaded,
+        "modelSize": list(target), "seed": seed,
+        "modelRevision": MODEL_REVISION,
+        "steps": 22, "guidanceScale": 9.0, "strength": 1.0,
+        "skyCropFraction": 0.35, "prompt": prompt, "negativePrompt": negative,
+    }

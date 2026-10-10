@@ -462,7 +462,7 @@ input:focus-visible {
   user-select: none;
 }
 .background-layer {
-  clip-path: inset(13% 0 13% 0);
+  clip-path: inset(var(--film-bar-height, 13%) 0 var(--film-bar-height, 13%) 0);
   transform: none;
   z-index: 1;
 }
@@ -492,7 +492,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   right: 0;
-  height: 13%;
+  height: var(--film-bar-height, 13%);
   background: #0b0c0d;
   z-index: 2;
   pointer-events: none;

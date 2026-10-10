@@ -8,6 +8,7 @@ const DEPTH_SPAN = 0.62;
 
 interface Props {
   depth: DepthResult;
+  backgroundMode?: "photo-depth" | "sky-plane";
   stage: RefObject<HTMLDivElement | null>;
   active: boolean;
   travelScale: number;
@@ -28,6 +29,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 /** A depth-relief photo: centered camera reproduces the original image exactly at vertices. */
 export function SpatialFrameScene({
   depth,
+  backgroundMode = "photo-depth",
   stage,
   active,
   travelScale,
@@ -58,14 +60,14 @@ export function SpatialFrameScene({
       try {
         const [background, depthImage] = await Promise.all([
           loadImage(depth.backgroundUrl),
-          loadImage(depth.renderDepthUrl),
+          backgroundMode === "photo-depth" ? loadImage(depth.renderDepthUrl) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         if (
           background.width !== depth.renderWidth ||
           background.height !== depth.renderHeight ||
-          depthImage.width !== depth.renderWidth ||
-          depthImage.height !== depth.renderHeight
+          (depthImage && (depthImage.width !== depth.renderWidth ||
+          depthImage.height !== depth.renderHeight))
         ) {
           throw new Error("Spatial image and depth coordinates do not match.");
         }
@@ -76,7 +78,7 @@ export function SpatialFrameScene({
           willReadFrequently: true,
         });
         if (!context) throw new Error("Canvas depth sampling is unavailable.");
-        context.drawImage(depthImage, 0, 0);
+        if (depthImage) context.drawImage(depthImage, 0, 0);
         const pixels = context.getImageData(
           0,
           0,
@@ -94,11 +96,11 @@ export function SpatialFrameScene({
         const planeWidth = (visibleWidth * depth.renderWidth) / depth.width;
         const planeHeight = (visibleHeight * depth.renderHeight) / depth.height;
         // The model PNG is 8-bit grayscale. Sample in its native padded coordinate system.
-        const segmentsX = Math.min(
+        const segmentsX = backgroundMode === "sky-plane" ? 1 : Math.min(
           96,
           Math.max(48, Math.round(depth.width / 12)),
         );
-        const segmentsY = Math.min(
+        const segmentsY = backgroundMode === "sky-plane" ? 1 : Math.min(
           96,
           Math.max(48, Math.round(depth.height / 12)),
         );
@@ -121,7 +123,8 @@ export function SpatialFrameScene({
             depth.renderHeight - 1,
             Math.max(0, Math.round((1 - v) * (depth.renderHeight - 1))),
           );
-          const near = pixels[(py * depth.renderWidth + px) * 4] / 255;
+          // Generated sky has no correspondence to the replaced photo geometry.
+          const near = backgroundMode === "sky-plane" ? 0 : pixels[(py * depth.renderWidth + px) * 4] / 255;
           const z = near * DEPTH_SPAN;
           // At rest, project every displaced vertex back to its original image coordinate.
           const compensation = (CAMERA_DISTANCE - z) / CAMERA_DISTANCE;
@@ -188,7 +191,7 @@ export function SpatialFrameScene({
         const overscanWorld =
           (visibleWidth * Math.min(depth.padding.left, depth.padding.right)) /
           depth.width;
-        const maxNearZ = DEPTH_SPAN;
+        const maxNearZ = backgroundMode === "sky-plane" ? 0 : DEPTH_SPAN;
         const safeCameraX =
           Math.min(
             0.06,
@@ -285,7 +288,7 @@ export function SpatialFrameScene({
       stageElement.style.removeProperty("--wake");
       delete stageElement.dataset.cameraX;
     };
-  }, [depth, stage, travelScale]);
+  }, [depth, backgroundMode, stage, travelScale]);
 
-  return <div className="spatial-canvas" ref={host} />;
+  return <div className="spatial-canvas" ref={host} data-background-mode={backgroundMode} />;
 }

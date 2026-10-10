@@ -1,4 +1,5 @@
 import type { Result } from "./api";
+import { FILM_BAR_FRACTION } from "./frameComposition";
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -35,7 +36,7 @@ export async function exportFrame(
   context.fillRect(0, 0, width, height);
   context.save();
   context.beginPath();
-  context.rect(0, height * 0.13, width, height * 0.74);
+  context.rect(0, height * FILM_BAR_FRACTION, width, height * (1 - 2 * FILM_BAR_FRACTION));
   context.clip();
   context.drawImage(background, left, top, width * zoom, height * zoom);
   context.restore();

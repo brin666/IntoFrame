@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import uuid
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from depth_estimator import MODEL_ID as DEPTH_MODEL_ID, estimate, prepare_render_assets
 from depth_estimator import OVERSCAN_FRACTION
 from restyler import MODEL_ID as RESTYLE_MODEL_ID, STYLES, restyle
+from compositing import composite_subject, recover_subject_edges
 from segmenter import MODEL_ID, segment
 
 BASE = Path(__file__).resolve().parent
@@ -77,7 +79,8 @@ def _process(job_id: str, image: Image.Image) -> dict:
     bbox = _bounds(mask)
     folder = DATA / job_id
     folder.mkdir()
-    image.save(folder / "source.webp", "WEBP", quality=92, method=4)
+    # One lossless canonical RGB avoids a second lossy subject copy in restyling.
+    image.save(folder / "source.webp", "WEBP", lossless=True, method=4)
     mask.save(folder / "mask.png")
     foreground = image.copy().convert("RGBA")
     foreground.putalpha(mask)
@@ -128,7 +131,11 @@ def _process_restyle(job_id: str, style: str) -> dict:
     restyle_jobs[(job_id, style)]["stage"] = "generating"
     background, composite, metrics = restyle(source, mask, style)
     restyle_jobs[(job_id, style)]["stage"] = "compositing"
-    background.save(target / "background.webp", "WEBP", quality=93, method=4)
+    subject, edge_metrics = recover_subject_edges(source, mask)
+    composite = composite_subject(subject, background)
+    # Preview, padded texture, composite and export must share identical RGB.
+    background.save(target / "background.webp", "WEBP", lossless=True, method=4)
+    subject.save(target / "subject.png", "PNG", optimize=True)
     composite.save(target / "composite.png", "PNG", optimize=True)
     pad_x = max(12, round(source.width * OVERSCAN_FRACTION))
     pad_y = max(12, round(source.height * OVERSCAN_FRACTION))
@@ -136,18 +143,22 @@ def _process_restyle(job_id: str, style: str) -> dict:
         np.asarray(background), pad_y, pad_y, pad_x, pad_x, cv2.BORDER_REFLECT_101
     )
     Image.fromarray(padded, "RGB").save(
-        target / "render-background.webp", "WEBP", quality=91, method=4
+        target / "render-background.webp", "WEBP", lossless=True, method=4
     )
     root_url = f"/media/{job_id}/styles/{style}"
-    return {
+    result = {
         "jobId": job_id,
         "style": style,
         "backgroundUrl": f"{root_url}/background.webp",
         "renderBackgroundUrl": f"{root_url}/render-background.webp",
         "compositeUrl": f"{root_url}/composite.png",
+        "subjectUrl": f"{root_url}/subject.png",
+        "backgroundGeometry": "sky-plane",
         "model": RESTYLE_MODEL_ID,
-        "metrics": metrics,
+        "metrics": {**metrics, **edge_metrics},
     }
+    (target / "metadata.json").write_text(json.dumps(result, indent=2), encoding="utf8")
+    return result
 
 
 async def _run_restyle(job_id: str, style: str) -> None:

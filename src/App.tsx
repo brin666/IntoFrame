@@ -36,6 +36,7 @@ import {
   type StyleId,
 } from "./api";
 import { exportFrame } from "./exportFrame";
+import { FILM_BAR_FRACTION } from "./frameComposition";
 const SpatialFrameScene = lazy(() =>
   import("./SpatialFrameScene").then((module) => ({
     default: module.SpatialFrameScene,
@@ -276,7 +277,7 @@ function App() {
   }, []);
 
   const horizontalLimit = (zoom - 1) / 2;
-  const verticalLimit = horizontalLimit + 0.13;
+  const verticalLimit = horizontalLimit + FILM_BAR_FRACTION;
   const xShift = result
     ? clamp(
         -zoom * (result.composition.focusX - 0.5),
@@ -302,6 +303,7 @@ function App() {
         "--photo-zoom": zoom,
         "--photo-x": `${xShift * 100}%`,
         "--photo-y": `${yShift * 100}%`,
+        "--film-bar-height": `${FILM_BAR_FRACTION * 100}%`,
       } as CSSProperties)
     : undefined;
   const backgroundFallbackStyle = depthResult
@@ -339,7 +341,7 @@ function App() {
     if (!result || !styledResult) return;
     setExportError("");
     try {
-      await exportFrame(result, styledResult.backgroundUrl, zoom, xShift, yShift, filename);
+      await exportFrame({ ...result, subjectUrl: styledResult.subjectUrl }, styledResult.backgroundUrl, zoom, xShift, yShift, filename);
     } catch (cause) {
       setExportError(cause instanceof Error ? cause.message : "Could not export PNG.");
     }
@@ -432,6 +434,7 @@ function App() {
                     <Suspense fallback={null}>
                       <SpatialFrameScene
                         depth={visibleDepth}
+                        backgroundMode={showingStyled ? "sky-plane" : "photo-depth"}
                         stage={photoStageRef}
                         active={holding}
                         travelScale={touchesImageEdge ? 0.45 : 1}
@@ -449,7 +452,7 @@ function App() {
               <div className="letterbox letterbox-bottom" />
               <div className="scene-layer subject-layer">
                 <img
-                  src={result.subjectUrl}
+                  src={showingStyled && styledResult ? styledResult.subjectUrl : result.subjectUrl}
                   alt="Segmented foreground subject"
                   draggable="false"
                 />
@@ -469,7 +472,7 @@ function App() {
                 <span className="eyebrow">AI BACKGROUND STUDIO</span>
                 <h2>Choose the atmosphere.</h2>
               </div>
-              <span className="style-studio-note">Your original subject stays in the frame.</span>
+              <span className="style-studio-note">AI sky + your original subject. Best with open-sky photos.</span>
             </div>
             <div className="style-choices">
               {styleOptions.map((option) => (
@@ -493,13 +496,14 @@ function App() {
               <button className="action-button" onClick={() => setShowBefore(!showBefore)} disabled={!styledResult}>
                 {showBefore ? "View after" : "View before"}
               </button>
-              <button className="action-button" onClick={() => void downloadPng()} disabled={!styledResult || generating}>
+              <button className="action-button" onClick={() => void downloadPng()} disabled={!styledResult || generating || showBefore || showMask}>
                 <Download size={17} /> Download PNG
               </button>
             </div>
             {generating && <p className="style-status" role="status">{restyleStageLabels[generationStage] || "Generating"} · First use downloads model weights and can take several minutes.</p>}
             {generationError && <p className="style-error" role="alert">{generationError}</p>}
             {exportError && <p className="style-error" role="alert">{exportError}</p>}
+            <p className="style-status">PNG saves the centered, still composition. {selectedStyle === "cinematic-night" ? "Night is a stylized composite; your subject keeps its original lighting." : "The whole background becomes sky; original scene layout is not retained."}</p>
           </section>
           <div className="preview-footer">
             <div className="result-caption">
@@ -588,8 +592,8 @@ function App() {
               <em>come alive.</em>
             </h1>
             <p>
-              One ordinary image. A subject that steps beyond the frame. A new
-              way to feel the moment.
+              Generate a new AI sky, keep your original subject, and create a
+              cinematic frame. Best with photos taken against an open sky.
             </p>
             <div className="hero-small">
               <span className="small-star">✳</span>

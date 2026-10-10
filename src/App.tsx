@@ -1,10 +1,13 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useRef,
   useState,
   type ChangeEvent,
   type CSSProperties,
   type DragEvent,
+  type PointerEvent,
 } from "react";
 import {
   ArrowLeft,
@@ -18,7 +21,19 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
-import { createJob, getJob, type Result } from "./api";
+import {
+  createDepth,
+  createJob,
+  getDepth,
+  getJob,
+  type DepthResult,
+  type Result,
+} from "./api";
+const SpatialFrameScene = lazy(() =>
+  import("./SpatialFrameScene").then((module) => ({
+    default: module.SpatialFrameScene,
+  })),
+);
 
 type Mode = "upload" | "processing" | "preview" | "error";
 const supported = ["image/jpeg", "image/png", "image/webp"];
@@ -35,12 +50,21 @@ function App() {
   const [stage, setStage] = useState("queued");
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  const [depthResult, setDepthResult] = useState<DepthResult | null>(null);
+  const [depthStage, setDepthStage] = useState("queued");
+  const [depthError, setDepthError] = useState("");
+  const [spatialReady, setSpatialReady] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   const [filename, setFilename] = useState("");
   const [zoom, setZoom] = useState(1);
   const [showMask, setShowMask] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const photoStageRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
 
   useEffect(
@@ -49,6 +73,41 @@ function App() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!result) return;
+    let cancelled = false;
+    setDepthResult(null);
+    setDepthError("");
+    setDepthStage("queued");
+    setSpatialReady(false);
+    async function processDepth() {
+      try {
+        await createDepth(result!.id);
+        while (!cancelled) {
+          const job = await getDepth(result!.id);
+          if (cancelled) return;
+          setDepthStage(job.stage);
+          if (job.status === "complete" && job.result) {
+            setDepthResult(job.result);
+            return;
+          }
+          if (job.status === "failed")
+            throw new Error(job.error || "Depth analysis failed.");
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
+      } catch (cause) {
+        if (!cancelled)
+          setDepthError(
+            cause instanceof Error ? cause.message : "Depth analysis failed.",
+          );
+      }
+    }
+    void processDepth();
+    return () => {
+      cancelled = true;
+    };
+  }, [result]);
 
   async function handleFile(file?: File) {
     if (!file) return;
@@ -66,6 +125,10 @@ function App() {
     setFilename(file.name);
     setError("");
     setResult(null);
+    setDepthResult(null);
+    setDepthError("");
+    setSpatialReady(false);
+    setHolding(false);
     setStage("queued");
     setMode("processing");
     try {
@@ -111,9 +174,37 @@ function App() {
   function reset() {
     requestRef.current += 1;
     setResult(null);
+    setDepthResult(null);
+    setHolding(false);
     setError("");
     setMode("upload");
   }
+
+  function startHold(event: PointerEvent<HTMLDivElement>) {
+    if (!spatialReady || showMask || prefersReducedMotion) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setHolding(true);
+  }
+
+  function endHold(event: PointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setHolding(false);
+  }
+
+  useEffect(() => {
+    const settle = () => setHolding(false);
+    window.addEventListener("blur", settle);
+    return () => window.removeEventListener("blur", settle);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   const horizontalLimit = (zoom - 1) / 2;
   const verticalLimit = horizontalLimit + 0.13;
@@ -139,6 +230,21 @@ function App() {
         "--photo-y": `${yShift * 100}%`,
       } as CSSProperties)
     : undefined;
+  const backgroundFallbackStyle = depthResult
+    ? ({
+        position: "absolute",
+        width: `${(depthResult.renderWidth / depthResult.width) * 100}%`,
+        height: `${(depthResult.renderHeight / depthResult.height) * 100}%`,
+        left: `${(-depthResult.padding.left / depthResult.width) * 100}%`,
+        top: `${(-depthResult.padding.top / depthResult.height) * 100}%`,
+      } as CSSProperties)
+    : undefined;
+  const touchesImageEdge = result
+    ? result.subjectBounds[0] <= result.width * 0.02 ||
+      result.subjectBounds[1] <= result.height * 0.02 ||
+      result.subjectBounds[2] >= result.width * 0.98 ||
+      result.subjectBounds[3] >= result.height * 0.98
+    : false;
 
   return (
     <div
@@ -166,7 +272,7 @@ function App() {
             A little more life in every frame.
           </span>
           <span className="phase-pill">
-            <span className="phase-dot" /> STATIC STUDIO
+            <span className="phase-dot" /> SPATIAL STUDIO
           </span>
         </div>
       </header>
@@ -183,8 +289,8 @@ function App() {
                 Beyond the frame<span className="title-period">.</span>
               </h1>
               <p>
-                The subject steps outside the cinematic crop. Fine-tune the
-                composition below.
+                Hold the photo to wake the scene. The subject stays beyond the
+                frame.
               </p>
             </div>
             <button
@@ -201,13 +307,46 @@ function App() {
               maxWidth: `min(1050px, ${(result.width / result.height) * 68}vh)`,
             }}
           >
-            <div className="photo-stage" style={previewStyle}>
+            <div
+              className={`photo-stage ${spatialReady && !prefersReducedMotion ? "spatial-ready" : ""} ${holding ? "is-awake" : ""}`}
+              style={previewStyle}
+              ref={photoStageRef}
+              onPointerDown={startHold}
+              onPointerUp={endHold}
+              onPointerCancel={endHold}
+              onLostPointerCapture={() => setHolding(false)}
+              aria-label={
+                spatialReady && !prefersReducedMotion
+                  ? "Interactive spatial photo. Hold to animate."
+                  : "Cinematic photo preview"
+              }
+            >
               <div className="scene-layer background-layer">
-                <img
-                  src={result.sourceUrl}
-                  alt="Original photograph"
-                  draggable="false"
-                />
+                <div className="background-content">
+                  <img
+                    src={
+                      depthResult ? depthResult.backgroundUrl : result.sourceUrl
+                    }
+                    style={backgroundFallbackStyle}
+                    alt="Photograph background"
+                    draggable="false"
+                  />
+                  {depthResult && !depthError && (
+                    <Suspense fallback={null}>
+                      <SpatialFrameScene
+                        depth={depthResult}
+                        stage={photoStageRef}
+                        active={holding}
+                        travelScale={touchesImageEdge ? 0.45 : 1}
+                        onReady={() => setSpatialReady(true)}
+                        onUnavailable={(message) => {
+                          setDepthError(message);
+                          setSpatialReady(false);
+                        }}
+                      />
+                    </Suspense>
+                  )}
+                </div>
               </div>
               <div className="letterbox letterbox-top" />
               <div className="letterbox letterbox-bottom" />
@@ -291,9 +430,14 @@ function App() {
               </button>
             </section>
           )}
-          <p className="phase-note">
-            Static break the frame preview · Depth and hold-to-live arrive in
-            the next build.
+          <p className="phase-note" role="status">
+            {depthError
+              ? `Static preview available. Spatial analysis: ${depthError}`
+              : spatialReady
+                ? prefersReducedMotion
+                  ? "Spatial preview ready · Motion is reduced in your system settings."
+                  : "HOLD TO LIVE · Press and hold the photo; release to settle."
+                : `Static preview ready · Preparing spatial depth (${depthStage}).`}
           </p>
         </main>
       ) : (
@@ -391,7 +535,7 @@ function App() {
               <span>03</span>
               <div>
                 <strong>Feel the space</strong>
-                <small>Interactive depth coming next</small>
+                <small>Hold to wake the scene</small>
               </div>
             </div>
           </div>

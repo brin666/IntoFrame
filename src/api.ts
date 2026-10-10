@@ -18,6 +18,29 @@ export interface Job {
   error?: string;
 }
 
+export interface DepthResult {
+  jobId: string;
+  width: number;
+  height: number;
+  renderWidth: number;
+  renderHeight: number;
+  padding: { left: number; right: number; top: number; bottom: number };
+  foregroundDepth: number;
+  encoding: "uint8-png-near-white";
+  depthUrl: string;
+  renderDepthUrl: string;
+  backgroundUrl: string;
+  model: string;
+  backgroundMethod: string;
+}
+
+export interface DepthJob {
+  status: "processing" | "complete" | "failed";
+  stage: string;
+  result?: DepthResult;
+  error?: string;
+}
+
 async function json<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok)
@@ -34,4 +57,18 @@ export async function createJob(file: File): Promise<string> {
 
 export async function getJob(id: string): Promise<Job> {
   return json<Job>(await fetch(`/api/jobs/${id}`));
+}
+
+export async function createDepth(id: string): Promise<void> {
+  await json(
+    await fetch("/api/depth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: id }),
+    }),
+  );
+}
+
+export async function getDepth(id: string): Promise<DepthJob> {
+  return json<DepthJob>(await fetch(`/api/depth/${id}`));
 }

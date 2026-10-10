@@ -11,7 +11,9 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps, UnidentifiedImageError
+from pydantic import BaseModel
 
+from depth_estimator import MODEL_ID as DEPTH_MODEL_ID, estimate, prepare_render_assets
 from segmenter import MODEL_ID, segment
 
 BASE = Path(__file__).resolve().parent
@@ -20,6 +22,7 @@ DATA.mkdir(exist_ok=True)
 MAX_UPLOAD = 20 * 1024 * 1024
 MAX_SIDE = 1600
 jobs: dict[str, dict] = {}
+depth_jobs: dict[str, dict] = {}
 semaphore = asyncio.Semaphore(1)
 
 app = FastAPI(title="IntoFrame API", version="0.1.0")
@@ -100,6 +103,51 @@ def _process(job_id: str, image: Image.Image) -> dict:
     }
 
 
+class DepthRequest(BaseModel):
+    jobId: str
+
+
+def _process_depth(job_id: str) -> dict:
+    folder = DATA / job_id
+    with Image.open(folder / "source.webp") as source_file:
+        source = source_file.convert("RGB")
+    with Image.open(folder / "mask.png") as mask_file:
+        mask = mask_file.convert("L")
+    depth_jobs[job_id]["stage"] = "estimating"
+    depth = estimate(source)
+    depth_jobs[job_id]["stage"] = "filling"
+    background, render_depth, foreground_depth, padding = prepare_render_assets(source, mask, depth)
+    depth.save(folder / "depth.png")
+    render_depth.save(folder / "render-depth.png")
+    background.save(folder / "background.webp", "WEBP", quality=91, method=4)
+    return {
+        "jobId": job_id,
+        "width": source.width,
+        "height": source.height,
+        "renderWidth": background.width,
+        "renderHeight": background.height,
+        "padding": padding,
+        "foregroundDepth": round(foreground_depth, 4),
+        "encoding": "uint8-png-near-white",
+        "depthUrl": f"/media/{job_id}/depth.png",
+        "renderDepthUrl": f"/media/{job_id}/render-depth.png",
+        "backgroundUrl": f"/media/{job_id}/background.webp",
+        "model": DEPTH_MODEL_ID,
+        "backgroundMethod": "OpenCV Telea local inpaint",
+    }
+
+
+async def _run_depth(job_id: str) -> None:
+    async with semaphore:
+        try:
+            result = await asyncio.to_thread(_process_depth, job_id)
+            depth_jobs[job_id] = {"status": "complete", "stage": "complete", "result": result}
+        except Exception as exc:
+            message = str(exc) if isinstance(exc, (ValueError, RuntimeError)) else "Depth processing failed. Check the backend log."
+            depth_jobs[job_id] = {"status": "failed", "stage": "failed", "error": message}
+            print(f"Depth job {job_id} failed: {exc!r}", flush=True)
+
+
 async def _run_job(job_id: str, image: Image.Image) -> None:
     async with semaphore:
         try:
@@ -142,3 +190,23 @@ def get_job(job_id: str):
     if job_id not in jobs:
         raise HTTPException(404, "Job not found. Upload the image again.")
     return jobs[job_id]
+
+
+@app.post("/api/depth", status_code=202)
+async def create_depth(request: DepthRequest):
+    job = jobs.get(request.jobId)
+    if job is None:
+        raise HTTPException(404, "Source job not found. Upload the image again.")
+    if job["status"] != "complete":
+        raise HTTPException(409, "Source segmentation must complete before depth processing.")
+    if request.jobId not in depth_jobs:
+        depth_jobs[request.jobId] = {"status": "processing", "stage": "queued"}
+        asyncio.create_task(_run_depth(request.jobId))
+    return {"id": request.jobId, "status": depth_jobs[request.jobId]["status"]}
+
+
+@app.get("/api/depth/{job_id}")
+def get_depth(job_id: str):
+    if job_id not in depth_jobs:
+        raise HTTPException(404, "Depth job not found. Start it with POST /api/depth.")
+    return depth_jobs[job_id]

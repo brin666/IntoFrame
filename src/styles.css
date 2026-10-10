@@ -441,6 +441,13 @@ input:focus-visible {
   background: #0b0c0d;
   isolation: isolate;
 }
+.photo-stage.spatial-ready {
+  cursor: grab;
+  touch-action: none;
+}
+.photo-stage.spatial-ready.is-awake {
+  cursor: grabbing;
+}
 .scene-layer {
   position: absolute;
   inset: 0;
@@ -456,7 +463,30 @@ input:focus-visible {
 }
 .background-layer {
   clip-path: inset(13% 0 13% 0);
+  transform: none;
   z-index: 1;
+}
+.background-content {
+  position: absolute;
+  inset: 0;
+  transform: translate(var(--photo-x), var(--photo-y)) scale(var(--photo-zoom));
+  will-change: transform;
+}
+.background-content > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+}
+.spatial-canvas {
+  position: absolute;
+  inset: 0;
+}
+.spatial-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .letterbox {
   position: absolute;
@@ -467,14 +497,34 @@ input:focus-visible {
   z-index: 2;
   pointer-events: none;
 }
+.letterbox::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--wake, 0);
+  transition: opacity 120ms linear;
+  pointer-events: none;
+}
 .letterbox-top {
   top: 0;
+}
+.letterbox-top::after {
+  background: linear-gradient(to top, #bcb1a51c, transparent 45%);
 }
 .letterbox-bottom {
   bottom: 0;
 }
+.letterbox-bottom::after {
+  background: linear-gradient(to bottom, #bcb1a51c, transparent 45%);
+}
 .subject-layer {
   z-index: 3;
+}
+.subject-layer img {
+  transform: translateX(var(--subject-parallax-x, 0px))
+    scale(var(--subject-parallax-scale, 1));
+  transform-origin: center;
+  will-change: transform;
 }
 .mask-layer {
   opacity: 0.72;

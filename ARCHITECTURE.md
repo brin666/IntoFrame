@@ -2,7 +2,7 @@
 
 ## Stage 0: checked environment and choices
 
-The workspace was empty at project start. The development PC has Node 24, Python 3.14 and 3.11, an RTX 4060 Laptop GPU with 8188 MiB VRAM, and FFmpeg. Python 3.11 is chosen for the image-service virtual environment so that older computer-vision dependencies are less likely to be a problem. GPU availability and model inference still need a real local test; hardware alone is not proof that the model runs.
+The workspace was empty at project start. The development PC has Node 24, Python 3.14 and 3.11, an RTX 4060 Laptop GPU with 8188 MiB VRAM, and FFmpeg. Python 3.11 is used for the image-service virtual environment. BiRefNet and Depth Anything V2 Small have both passed real local inference on this GPU.
 
 | Concern | Choice | Reason |
 | --- | --- | --- |
@@ -11,23 +11,25 @@ The workspace was empty at project start. The development PC has Node 24, Python
 | Segmentation | Official BiRefNet via PyTorch, FP16, 1024-square input | Detail-friendly salient-object mask; the official repo describes roughly 3.45 GB GPU memory on RTX 4090 at this size, which is an estimate, not a measurement on this PC. |
 | Image geometry | One canonical EXIF-corrected RGB image, longest edge ≤1600 px; mask resized to its exact width/height | All pixels stay in one coordinate system. No web-layer guessing about EXIF or image fit. |
 | Static renderer | Two aligned image layers and stationary letterbox bars | The background cannot paint over the bars; the transparent foreground can. The same transform is applied to both layers, preventing duplicate silhouettes while stationary. |
-| Stage 2 renderer | Three.js with one bounded depth mesh for the filled scene and a foreground cutout layer | Real camera projection is needed for depth-dependent pixel motion; plain CSS translations are insufficient. |
+| Stage 2 renderer | Three.js depth mesh for the filled scene; DOM foreground cutout above DOM bars | Perspective camera motion provides depth-dependent pixel travel while the existing break-the-frame stacking remains reliable. |
 
 ## Data contract
 
 `POST /api/jobs` accepts multipart `file` and returns a job ID. `GET /api/jobs/{id}` returns `processing`, `complete`, or `failed` and the current stage. A completed result gives `sourceUrl`, `maskUrl`, `subjectUrl`, `width`, `height`, `subjectBounds`, and `composition` (`scale`, `focusX`, `focusY`). The image and mask are at the same resolution; bounds are source pixel coordinates. Files are under `backend/data/<job-id>/`.
 
+`POST /api/depth` accepts `{"jobId":"..."}` only after segmentation completes. `GET /api/depth/{id}` reports depth processing status and then returns native `depth.png`, padded `render-depth.png`, and padded `background.webp` with source and render dimensions, padding, and representative foreground depth. PNG grayscale 0 means farther, 255 means nearer. Percentile normalization and Gaussian smoothing produce a control signal, not metric distance. The original mask and depth retain one native coordinate system; the padded image and depth retain a second shared coordinate system.
+
 ## Stage 1 rendering geometry
 
 The source is rendered into a full canvas and clipped to the central 74% aperture. Opaque black bars cover the top and bottom 13% of the canvas. A transparent PNG made with BiRefNet's alpha is rendered after the bars. Source and subject receive the same composition transform, so no second copy is visible within the aperture. Subject head or feet outside the aperture remain visible over the bars. The bounded initial scale is derived from mask bounds; the user can correct framing with a zoom slider. The absence of an inpainted background means camera translation is disabled in stage 1.
 
-## Stage 2: real spatial motion
+## Stage 2: implemented spatial motion
 
-1. Run Depth Anything V2 Small once per upload. Preserve raw relative depth and robustly normalize with percentiles, then clamp to a shallow inverse-depth range. Do not interpret it as measured meters.
-2. Triangulate a regular image grid (initially 64 × 64) and assign each vertex a synthetic `Z` from filtered depth. Project the textured mesh with a perspective camera. For lateral camera translation `ΔX`, projected motion follows `Δx ≈ f · ΔX / Z`; nearer image regions move more. Validate this with a depth-step fixture.
-3. Inpaint the region hidden by the primary subject before translating the scene. Render the cutout foreground at its own depth with an alpha texture. Use one projection and shared image UVs to keep subject and scene aligned. Composite a second foreground pass outside the central aperture so the subject can still cross the bars, while the background remains clipped to it.
-4. Bound travel from the usable image overscan and inpainted margin. For each depth bin, estimate maximum screen shift `f · |ΔX| / Z`; restrict `ΔX` so the shift stays below the valid filled margin. Fall back to smaller travel if confidence or inpainting quality is low. Never expose an empty region just to make movement stronger.
-5. On pointer hold, move the virtual camera on a slow sinusoidal path; on release, damp velocity and return to the origin. Allow drag to add a bounded offset. Measure frame times on the target browser and tune mesh density, texture size, and device pixel ratio to the 30 FPS goal.
+1. Depth Anything V2 Small runs once after segmentation. The server normalizes its relative output using the 2nd and 98th percentiles, smooths it, and writes an 8-bit depth PNG. Inference is serialized with segmentation to avoid peak GPU overlap.
+2. OpenCV Telea fills the masked subject region and 6% reflected overscan provides edge pixels. This is a conservative local approximation; large unseen regions cannot be reconstructed from the photo.
+3. A 48–96 subdivision `PlaneGeometry` samples the padded depth map and displaces vertices by `z = 0.62 × depth`. With camera distance `C = 3.5`, each original vertex position is multiplied by `(C − z)/C`. This compensation puts every vertex back at its original pixel at the rest pose. A perspective camera then moves laterally; screen displacement at a fixed depth is `−f_pixels × cameraX/(C − z)`.
+4. The representative foreground plane sits slightly ahead of the depth mesh. The transparent DOM subject receives the same projection formula from the camera position and foreground plane depth. This is a 2.5D layer, so parts of one subject at different depths do not self-parallax, but the screen motion is tied to the camera projection rather than an arbitrary CSS speed. DOM bars cover only the mesh; DOM subject remains above them.
+5. Camera sway is clamped by the 6% overscan width and the nearest displaced depth, then eased with a damped spring. Edge-touching masks further reduce camera travel. The Three canvas has transparent clear pixels over the *same filled background image*, so an exposed mesh edge cannot become a black hole. Pointer capture handles mouse/touch release and cancellation; blur also settles the scene. Device pixel ratio is capped at 1.5. Reduced-motion preference suppresses the animation. AI is never called per frame.
 
 ## Main risks and gates
 
@@ -35,11 +37,11 @@ The source is rendered into a full canvas and clipped to the central 74% apertur
 - **Segmentation quality:** test a person with hair, a pet with fur, and an object or scene. Mask holes and ambiguous subjects require selection or brush edits; stage 1 does not yet provide those edits.
 - **Disocclusion:** a depth mesh cannot invent surfaces hidden behind the subject. Inpainting or a tight camera bound is required before stage 2 motion ships.
 - **Single-photo depth:** relative depth can be noisy around edges and reflective materials. Use smoothing and conservative camera travel, and compare result visually rather than claiming physical reconstruction.
-- **Model weights and memory:** load sequentially, not concurrently, on the 8 GB GPU; release the segmentation model before loading depth if peak memory requires it. Keep inference on uploads only.
+- **Model weights and memory:** both models ran locally in the same process with serialized inference. A spot GPU reading after both loaded was 5044 MiB used, including other processes. Keep inference on uploads only; test again under competition-day GPU load.
 
 ## Delivery sequence
 
 1. Stage 1: verify model on this PC, inspect masks on at least three categories, improve composition and mask correction, capture first screenshots.
-2. Stage 2: depth artifact, perspective grid, hold and drag controls, occlusion and travel limit, browser FPS measurement.
+2. Stage 2: depth artifact, perspective grid, hold interaction, occlusion and travel limit, browser FPS measurement. Free drag exploration remains future work.
 3. Stage 3: licensed inpainting model, edge cleanup, dynamic bars, mobile layout and optional sensor motion.
 4. Stage 4: three-category QA, README, screenshots, and an under-three-minute demo script/video.

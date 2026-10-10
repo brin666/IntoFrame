@@ -191,7 +191,9 @@ export function SpatialFrameScene({
         const overscanWorld =
           (visibleWidth * Math.min(depth.padding.left, depth.padding.right)) /
           depth.width;
-        const maxNearZ = backgroundMode === "sky-plane" ? 0 : DEPTH_SPAN;
+        // Keep the original conservative travel bound in both modes. A sky
+        // plane could allow more travel, but quality fixes must not add sway.
+        const maxNearZ = DEPTH_SPAN;
         const safeCameraX =
           Math.min(
             0.06,

@@ -38,6 +38,7 @@ try {
       await page.locator(".photo-stage.spatial-ready").waitFor({ timeout: 60000 });
       await page.waitForFunction(() => [...document.querySelectorAll(".photo-stage img")].every((image) => image.complete && image.naturalWidth > 0));
       const result = (await (await page.request.get(`${base}/api/restyle/${jobId}/${style}`)).json()).result;
+      const generationWallSeconds = (performance.now() - generationStart) / 1000;
       for (const [name, url] of Object.entries({ source: sourceResult.sourceUrl, mask: sourceResult.maskUrl, subject: sourceResult.subjectUrl, ...(result.subjectUrl ? { styledSubject: result.subjectUrl } : {}), background: result.backgroundUrl, composite: result.compositeUrl, renderBackground: result.renderBackgroundUrl })) {
         const asset = await page.request.get(`${base}${url}`);
         if (!asset.ok()) throw new Error(`Asset ${name} failed: ${asset.status()}`);
@@ -61,7 +62,7 @@ try {
         const foreground = stage.querySelector(".subject-layer img");
         return { width: bounds.width, height: bounds.height, topBar: top.height, bottomBar: bottom.height, cameraX: stage.dataset.cameraX, subjectURL: foreground.getAttribute("src"), backgroundMode: stage.querySelector(".spatial-canvas")?.dataset.backgroundMode || "legacy-depth", transform: getComputedStyle(stage.querySelector(".subject-layer")).transform };
       });
-      const styleRecord = { style, ...result, generationWallSeconds: (performance.now() - generationStart) / 1000, geometry, output: `${input.label}/${style}`, errors };
+      const styleRecord = { style, ...result, generationWallSeconds, geometry, output: `${input.label}/${style}`, errors };
       record.styles.push(styleRecord);
       writeFileSync(join(out, "record.json"), JSON.stringify({ phase, commit, input: input.label, ...styleRecord }, null, 2));
       console.log(JSON.stringify({ input: input.label, style, size: [sourceResult.width, sourceResult.height], metrics: result.metrics, errors }));

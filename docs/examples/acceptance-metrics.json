@@ -1,0 +1,191 @@
+[
+  {
+    "input": "astronaut",
+    "style": "dreamy-pink",
+    "processedSize": [
+      512,
+      512
+    ],
+    "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+    "metrics": {
+      "seconds": 4.07,
+      "loadSeconds": 0,
+      "inferenceSeconds": 3.89,
+      "modelWasLoaded": true,
+      "modelSize": [
+        640,
+        640
+      ],
+      "seed": 1181439702,
+      "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+      "steps": 22,
+      "guidanceScale": 9,
+      "strength": 1,
+      "skyCropFraction": 0.35,
+      "prompt": "photorealistic dreamy lavender and soft pink cloudscape, fluffy natural clouds filling the frame, soft ethereal light, only open sky from edge to edge, no horizon, no ground, no objects",
+      "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+      "edgePixelsChanged": 2613,
+      "edgeBandPixels": 4,
+      "maxChannelCorrection": 48
+    },
+    "commit": "cffdb09e60e46cc705a1fabaa8341b89cf697d4d",
+    "opaquePixels": 130415,
+    "opaqueChanged": 0,
+    "alphaChanged": 0,
+    "edgeChangedPixels": 2613,
+    "maxChannelCorrection": 48,
+    "changesOutsideBand": 0,
+    "previewVsExportMAE": 0.717,
+    "previewVsExportP95": 3.0,
+    "barHeightDifference": 0.0,
+    "backgroundMode": "sky-plane",
+    "exportCorners": [
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ]
+    ]
+  },
+  {
+    "input": "chelsea",
+    "style": "dreamy-pink",
+    "processedSize": [
+      451,
+      300
+    ],
+    "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+    "metrics": {
+      "seconds": 4.13,
+      "loadSeconds": 0,
+      "inferenceSeconds": 3.95,
+      "modelWasLoaded": true,
+      "modelSize": [
+        640,
+        448
+      ],
+      "seed": 590101538,
+      "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+      "steps": 22,
+      "guidanceScale": 9,
+      "strength": 1,
+      "skyCropFraction": 0.35,
+      "prompt": "photorealistic dreamy lavender and soft pink cloudscape, fluffy natural clouds filling the frame, soft ethereal light, only open sky from edge to edge, no horizon, no ground, no objects",
+      "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+      "edgePixelsChanged": 1183,
+      "edgeBandPixels": 4,
+      "maxChannelCorrection": 48
+    },
+    "commit": "cffdb09e60e46cc705a1fabaa8341b89cf697d4d",
+    "opaquePixels": 106007,
+    "opaqueChanged": 0,
+    "alphaChanged": 0,
+    "edgeChangedPixels": 1183,
+    "maxChannelCorrection": 48,
+    "changesOutsideBand": 0,
+    "previewVsExportMAE": 1.25,
+    "previewVsExportP95": 4.0,
+    "barHeightDifference": 0.0,
+    "backgroundMode": "sky-plane",
+    "exportCorners": [
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        87,
+        51,
+        25
+      ],
+      [
+        11,
+        12,
+        13
+      ]
+    ]
+  },
+  {
+    "input": "coffee",
+    "style": "golden-hour",
+    "processedSize": [
+      600,
+      400
+    ],
+    "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+    "metrics": {
+      "seconds": 4.14,
+      "loadSeconds": 0,
+      "inferenceSeconds": 3.95,
+      "modelWasLoaded": true,
+      "modelSize": [
+        640,
+        448
+      ],
+      "seed": 1775713519,
+      "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+      "steps": 22,
+      "guidanceScale": 9,
+      "strength": 1,
+      "skyCropFraction": 0.35,
+      "prompt": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture, only open sky from edge to edge, no horizon, no ground, no objects",
+      "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+      "edgePixelsChanged": 1854,
+      "edgeBandPixels": 4,
+      "maxChannelCorrection": 48
+    },
+    "commit": "cffdb09e60e46cc705a1fabaa8341b89cf697d4d",
+    "opaquePixels": 112002,
+    "opaqueChanged": 0,
+    "alphaChanged": 0,
+    "edgeChangedPixels": 1854,
+    "maxChannelCorrection": 48,
+    "changesOutsideBand": 0,
+    "previewVsExportMAE": 0.336,
+    "previewVsExportP95": 1.0,
+    "barHeightDifference": 0.0,
+    "backgroundMode": "sky-plane",
+    "exportCorners": [
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ],
+      [
+        11,
+        12,
+        13
+      ]
+    ]
+  }
+]

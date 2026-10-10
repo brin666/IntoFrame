@@ -6,6 +6,7 @@ Uses the three standard scikit-image sample images, not a simulated AI result.
 from __future__ import annotations
 
 import io
+import os
 import time
 from pathlib import Path
 
@@ -13,7 +14,7 @@ import requests
 from PIL import Image
 from skimage import data
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = os.environ.get("INTOFRAME_API_URL", "http://127.0.0.1:8000").rstrip("/")
 SAMPLES = {"person_astronaut": data.astronaut, "pet_chelsea": data.chelsea, "object_coffee": data.coffee}
 OUTPUT = Path(__file__).resolve().parents[1] / "backend" / "data" / "smoke"
 

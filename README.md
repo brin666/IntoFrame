@@ -18,6 +18,12 @@ An isolated [Subject Depth Mesh experiment](SUBJECT_DEPTH_EXPERIMENT.md) is avai
 - Choose Dreamy Pink, Golden Hour, or Cinematic Night. A local Stable Diffusion inpainting checkpoint generates a new sky field. The full-resolution original subject is restored using the BiRefNet alpha mask; no paid image API is called.
 - Compare Before/After, watch generation status, and download a full-resolution PNG with the visible film bars and pop-out subject.
 
+This is a runnable prototype for **open-sky compositions**, not a general scene editor or precise 3D reconstruction. Night retains the subject's original lighting and is explicitly a stylized composite. See the [visual acceptance report](docs/VISUAL_ACCEPTANCE.md) for individual results and failures.
+
+![Real person Before/After](docs/examples/astronaut-before-after.png)
+
+NASA/scikit-image sample; real locally generated background. [PNG export](docs/examples/astronaut-export.png). Source credit and rights are documented in [asset credits](docs/ASSET_CREDITS.md).
+
 ## Requirements
 
 - Windows with Python 3.11, Node.js 20+, and an NVIDIA GPU with about 8 GB VRAM.
@@ -26,38 +32,45 @@ An isolated [Subject Depth Mesh experiment](SUBJECT_DEPTH_EXPERIMENT.md) is avai
 
 ## Run locally
 
-From `D:\hks` in PowerShell:
+From the cloned project directory in PowerShell:
 
 ```powershell
+git clone https://github.com/brin666/IntoFrame.git
+cd IntoFrame
 py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install 'torch==2.11.0+cu128' 'torchvision==0.26.0+cu128' --index-url https://download.pytorch.org/whl/cu128
 .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
-& 'D:\nodejs\npm.cmd' install
+npm.cmd ci
 ```
 
-Use the `npm.cmd` on your own PATH if Node is installed elsewhere. Open two terminals:
+Python 3.11 and Node must be on PATH. Open two terminals from the project directory:
 
 ```powershell
-cd D:\hks\backend
+cd backend
 ..\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
 ```powershell
-cd D:\hks
-& 'D:\nodejs\npm.cmd' run dev
+npm.cmd run dev
 ```
 
 Open `http://127.0.0.1:5187`. The static preview appears as soon as segmentation completes; depth continues in the background. Choose a style and press **Generate background**. The first generation downloads the diffusion model; later generations are faster. Source images and results stay in `backend/data/` on this machine and are gitignored. Job records are in memory; restarting the API clears them. No API key or paid service is configured or required. The model weights are downloaded from Hugging Face, so the first run needs network access.
 
-For a single-origin local demo after `npm run build`, run `.\.venv\Scripts\python.exe scripts\serve-subject-experiment.py` from `D:\hks` and open `http://127.0.0.1:5190/`. This helper also keeps `/experiment.html` accessible without changing the production preview.
+For a single-origin local demo, run `npm.cmd run build`, then `.\.venv\Scripts\python.exe scripts\serve-subject-experiment.py` from the project directory and open `http://127.0.0.1:5190/`. This helper also keeps `/experiment.html` accessible without changing the production preview. The existing experimental sample media are local-only: on another machine, prepare your own job as described in the [experiment guide](SUBJECT_DEPTH_EXPERIMENT.md).
 
 ## AI background generation and export
 
 After segmentation, `POST /api/restyle` accepts `{"jobId":"<id>","style":"dreamy-pink"}`. Supported styles are `dreamy-pink`, `golden-hour`, and `cinematic-night`. Poll `GET /api/restyle/{id}/{style}` for `processing`, `complete`, or `failed`. A completed result includes native-size `backgroundUrl`, `compositeUrl`, and a reflected-overscan `renderBackgroundUrl` for the existing depth renderer. The endpoint reports errors rather than returning a substitute image.
 
-The local [Stable Diffusion v1.5 Inpainting checkpoint](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting) runs in FP16 at about 640 px on its longest side with CPU offload and 22 denoising steps. In this MVP it synthesizes a coherent **whole-sky underlay**; the subject mask protects original pixels during the final full-resolution composite. A small deterministic crop selects the generated sky region. Golden Hour receives a warm grade and Cinematic Night a cool grade. This is genuine diffusion generation followed by conventional crop/color processing. It is **not** context-aware replacement of every original background object: photos whose original scene is not sky may look like a cutout. It does not relight the preserved subject. The optional depth mesh continues to use the original relative depth map, so a radically different generated background may have imperfect motion geometry.
+The local [Stable Diffusion v1.5 Inpainting checkpoint](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting) runs in FP16 at about 640 px on its longest side with CPU offload and 22 denoising steps. In this MVP it synthesizes a **whole background intended as sky**; the subject mask protects original pixels during the full-resolution composite. A deterministic crop selects the upper generated region. Golden Hour receives a warm grade and Cinematic Night a cool grade. These are real diffusion textures followed by conventional crop/color processing. The model can still invent an unwanted horizon, as seen in the coffee boundary test. This is **not** context-aware replacement of every original background object and does not relight the subject.
 
-The browser PNG exporter uses the current zoom and composition offsets, clips the generated background to the middle 74%, draws the 13% top and bottom bars, then draws the original transparent subject over them. It exports a still image at the processed source resolution; camera animation is an interactive webpage effect and is not encoded in the PNG.
+Source RGB and all styled background assets are saved losslessly. A bounded color recovery changes only semitransparent silhouette RGB within four pixels of clear background, with nearby opaque foreground as a reference; alpha is unchanged. Opaque subject cores are preserved. This does not correct opaque mask false positives, so some fine tower-tip spill remains. Original preview and experiment assets retain their existing foreground logic.
+
+Original-photo motion uses the existing filled photo-depth mesh. Generated backgrounds use a distant plane with the **same perspective camera** and bounded hold/release motion; they do not inherit roads, room surfaces or buildings from the replaced scene's depth. Subject plane depth still comes from the original subject. No AI runs per frame.
+
+The browser PNG exporter uses the current zoom and composition offsets, clips the generated background to the middle 74%, draws equal top and bottom bars from the **same 13% parameter used by the DOM**, then draws the recovered transparent subject over them. It exports the **centered, still AI result** at the processed source resolution. Camera animation is not encoded. Download is disabled while inspecting Before or the mask to avoid confusing those views with the exported result. Browser and PNG have matching composition, with different raster sampling at fractional CSS sizes; pixel identity with a scaled screenshot is not claimed.
+
+Completed restyle responses also include `subjectUrl`, `backgroundGeometry: "sky-plane"`, and metrics for seed, pinned model revision, prompts, steps, guidance, loading and inference seconds, and edge processing. The same metadata are stored next to the local output as `metadata.json`.
 
 ## Depth API and image coordinates
 
@@ -74,18 +87,11 @@ Source, mask, subject and native depth share the same EXIF-corrected width and h
 - [BiRefNet](https://github.com/ZhengPeng7/BiRefNet), official weights [`ZhengPeng7/BiRefNet`](https://huggingface.co/ZhengPeng7/BiRefNet), MIT per the code repository and model card. The model's remote Python implementation is loaded via `trust_remote_code=True` at pinned revision `e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4`.
 - [Depth Anything V2 Small](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf), Apache 2.0 for the Small checkpoint, loaded at pinned revision `5426e4f0f36572d16453bbda7a8389317b1bef99`. Larger checkpoints have different terms and are not selected here.
 - [Stable Diffusion v1.5 Inpainting](https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-inpainting), CreativeML OpenRAIL-M, loaded at pinned revision `8a4288a76071f7280aedbdb3253bdb9e9d5d84bb`. Review its license and use restrictions before publication; model output quality varies by image.
-- UI: React and Three.js (MIT), Vite (MIT), Lucide icons (ISC). Backend: FastAPI (MIT), Diffusers (Apache 2.0), Pillow (HPND), OpenCV (Apache 2.0), and PyTorch (BSD-style). Check each package's bundled license when redistributing.
+- UI: React, Three.js and Vite (MIT), Lucide icons (ISC). Backend: FastAPI (MIT), Diffusers (Apache 2.0), Pillow 12.3 (MIT-CMU), OpenCV (Apache 2.0), and PyTorch (BSD-3-Clause). See [third-party credits](docs/THIRD_PARTY.md) for other direct dependencies and model pins.
 
-For Banana Hacks 2026, cite the models, libraries, and AI development tools in the submission. The Git history is preserved with its real timestamps. A public GitHub remote has not yet been configured; do not claim a public submission until that separate step is approved and completed.
+No repository-wide license for project-authored code has been selected. Publishing the repository does not relicense third-party code, model weights, or sample images. Their separate terms and attributions remain applicable.
 
-After reviewing the tracked files and explicitly approving the first public push, create an empty public repository named `IntoFrame` on GitHub (without an initial README or license), then run the following with your own GitHub username. These commands have not been executed:
-
-```powershell
-cd D:\hks
-git status
-git remote add origin https://github.com/YOUR_USERNAME/IntoFrame.git
-git push -u origin main
-```
+For Banana Hacks 2026, cite the models, libraries, and AI development tools (including OpenAI Codex used for implementation/testing) in the submission. The [public repository](https://github.com/brin666/IntoFrame) retains real commit timestamps and history. Public publication is **not** a contest-platform submission or proof of eligibility. Private building photos, model weights, logs and test caches are excluded; only explicitly credited public samples are distributed.
 
 Failed background jobs can be submitted again with the same source and style. Processing requests share the existing task; completed requests reuse the saved result.
 
@@ -95,16 +101,20 @@ With both local servers running:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\smoke.py
-& 'D:\nodejs\node.exe' scripts\browser-smoke.mjs
+node scripts\browser-smoke.mjs
 .\.venv\Scripts\python.exe scripts\depth-smoke.py
-& 'D:\nodejs\node.exe' scripts\spatial-browser-smoke.mjs
-& 'D:\nodejs\node.exe' scripts\restyle-browser-smoke.mjs
-& 'D:\nodejs\npm.cmd' run build
+node scripts\spatial-browser-smoke.mjs
+node scripts\restyle-browser-smoke.mjs
+.\.venv\Scripts\python.exe scripts\test-restyle-jobs.py
+.\.venv\Scripts\python.exe scripts\test-compositing.py
+npm.cmd run build
 ```
 
-The scripts use scikit-image's `astronaut` (person), `chelsea` (cat), and `coffee` (object) sample images. Run the data smoke script first to create the sample source files. The restyle browser test defaults to the Vite URL and accepts `INTOFRAME_URL=http://127.0.0.1:5190` for the single-origin build. Set `INTOFRAME_TEST_PHOTO` to an absolute JPG/PNG/WebP path to test another image. The restyle script captures Before/After screenshots and an exported PNG under gitignored `screenshots/` and checks hold movement. The depth smoke checks asset dimensions and non-flat depth values. The spatial browser test checks hold motion, release settling, layer order, mobile touch, reduced-motion preference and frame timing. Earlier local measurements of the existing stage 2 preview are about 240 animation callbacks per second with a 4.2 ms 95th-percentile frame interval over two seconds in headless Chrome; this does not guarantee performance on other displays.
+The scripts use scikit-image's `astronaut` (person), `chelsea` (cat), and `coffee` (object) sample images. Run the data smoke script first to create their source files. For the single-origin build, set `$env:INTOFRAME_URL='http://127.0.0.1:5190'` and `$env:INTOFRAME_API_URL='http://127.0.0.1:5190'`. Set `INTOFRAME_TEST_PHOTO` to a local photo path for the restyle test. Browser scripts require Google Chrome installed. The restyle test injects one HTTP transport failure, then retries through the real AI pipeline; model failure scheduling is separately unit-tested. It checks Before/After, generated-sky plane selection, recovered subject layer, hold/settle and PNG download. Spatial regression checks mobile touch, reduced motion and layer order. Measured 240 animation callbacks/s and a 4.3 ms p95 interval in headless Chrome are **callback timing, not display FPS**.
 
-Example from a local Big Ben photo: the blue sky became pink clouds while the original clock faces and tower remained intact; the exported PNG was 1426 × 1600 and retained the black bars and a tower tip above the top bar. The same generator also completed a cat photo, though its mask touched the photo boundaries, so most of the frame remained the original cat. Local example images live in ignored `screenshots/` and are not checked into Git because they derive from user/test photos.
+For reproducible visual evidence, use the [acceptance procedure](docs/VISUAL_ACCEPTANCE.md). Original images, backgrounds, raw composites, exports, browser screenshots and enlarged edge comparisons are saved under ignored `screenshots/acceptance/`. Visual judgments are recorded separately from automated functional checks.
+
+Example from a local Big Ben photo: the blue sky became pink clouds while the clock faces and tower remained intact; the exported PNG was 1426 × 1600 and retained the bars and tower tip. Dreamy Pink and Golden Hour were judged suitable for a normal-size prototype demonstration. Night was not recommended for the main showcase. The close-cropped cat and floating coffee examples are retained as limitations, rather than presented as universally successful compositions.
 
 ## Current limits
 

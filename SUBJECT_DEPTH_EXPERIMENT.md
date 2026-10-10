@@ -6,11 +6,11 @@ for another upload, pass its job ID as `/experiment.html?job=<id>` after prepari
 
 ## Run
 
-From `D:\hks` with the project's virtual environment:
+From the project directory with its virtual environment:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\prepare-subject-depth-experiment.py <job-id>
-& 'D:\nodejs\npm.cmd' run build
+npm.cmd run build
 .\.venv\Scripts\python.exe scripts\serve-subject-experiment.py
 ```
 
@@ -59,11 +59,11 @@ p98 saturation at the corner does not recur in this experiment.
 ## Big Ben test, 2026-10-10
 
 ```powershell
-& 'D:\nodejs\node.exe' scripts\subject-experiment-browser.mjs
+node scripts\subject-experiment-browser.mjs
 .\.venv\Scripts\python.exe scripts\measure-subject-motion.py
 py -3.11 scripts\subject-experiment-montage.py
 $env:INTOFRAME_URL='http://127.0.0.1:5190/'
-& 'D:\nodejs\node.exe' scripts\spatial-browser-smoke.mjs
+node scripts\spatial-browser-smoke.mjs
 ```
 
 The browser test captured Flat and Depth at all three fixed views plus a Geometry

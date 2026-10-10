@@ -64,7 +64,7 @@ try {
               .map((value, index) => value - times[index])
               .sort((a, b) => a - b);
             resolve({
-              fps: Math.round(
+              callbacksPerSecond: Math.round(
                 ((times.length - 1) * 1000) / (times.at(-1) - times[0]),
               ),
               p95Ms: Number(

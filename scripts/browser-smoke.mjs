@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import { resolve } from "node:path";
+const base = process.env.INTOFRAME_URL || "http://127.0.0.1:5187/";
 
 const browser = await chromium.launch({
   headless: true,
@@ -18,7 +19,7 @@ try {
     ["pet", "pet_chelsea"],
     ["object", "object_coffee"],
   ]) {
-    await page.goto("http://127.0.0.1:5187/", { waitUntil: "networkidle" });
+    await page.goto(base, { waitUntil: "networkidle" });
     await page
       .locator("input[type=file]")
       .setInputFiles(resolve(`backend/data/smoke/${name}_source.webp`));
@@ -59,7 +60,7 @@ try {
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 1,
   });
-  await mobile.goto("http://127.0.0.1:5187/", { waitUntil: "networkidle" });
+  await mobile.goto(base, { waitUntil: "networkidle" });
   await mobile
     .locator("input[type=file]")
     .setInputFiles(resolve("backend/data/smoke/object_coffee_source.webp"));

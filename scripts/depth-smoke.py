@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import time
 
 import numpy as np
@@ -10,7 +11,7 @@ import requests
 from PIL import Image
 from skimage import data
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.environ.get("INTOFRAME_API_URL", "http://127.0.0.1:8000").rstrip("/")
 SAMPLES = {"person": data.astronaut, "pet": data.chelsea, "object": data.coffee}
 
 

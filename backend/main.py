@@ -276,7 +276,7 @@ async def create_restyle(request: RestyleRequest):
     if request.style not in STYLES:
         raise HTTPException(422, "Choose a supported background style.")
     key = (request.jobId, request.style)
-    if key not in restyle_jobs:
+    if key not in restyle_jobs or restyle_jobs[key]["status"] == "failed":
         restyle_jobs[key] = {"status": "processing", "stage": "queued"}
         asyncio.create_task(_run_restyle(*key))
     return {"id": request.jobId, "style": request.style, "status": restyle_jobs[key]["status"]}

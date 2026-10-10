@@ -78,6 +78,17 @@ Source, mask, subject and native depth share the same EXIF-corrected width and h
 
 For Banana Hacks 2026, cite the models, libraries, and AI development tools in the submission. The Git history is preserved with its real timestamps. A public GitHub remote has not yet been configured; do not claim a public submission until that separate step is approved and completed.
 
+After reviewing the tracked files and explicitly approving the first public push, create an empty public repository named `IntoFrame` on GitHub (without an initial README or license), then run the following with your own GitHub username. These commands have not been executed:
+
+```powershell
+cd D:\hks
+git status
+git remote add origin https://github.com/YOUR_USERNAME/IntoFrame.git
+git push -u origin main
+```
+
+Failed background jobs can be submitted again with the same source and style. Processing requests share the existing task; completed requests reuse the saved result.
+
 ## Verification
 
 With both local servers running:

@@ -7,6 +7,8 @@ import io
 import uuid
 from pathlib import Path
 
+import cv2
+import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +16,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
 from depth_estimator import MODEL_ID as DEPTH_MODEL_ID, estimate, prepare_render_assets
+from depth_estimator import OVERSCAN_FRACTION
+from restyler import MODEL_ID as RESTYLE_MODEL_ID, STYLES, restyle
 from segmenter import MODEL_ID, segment
 
 BASE = Path(__file__).resolve().parent
@@ -23,6 +27,7 @@ MAX_UPLOAD = 20 * 1024 * 1024
 MAX_SIDE = 1600
 jobs: dict[str, dict] = {}
 depth_jobs: dict[str, dict] = {}
+restyle_jobs: dict[tuple[str, str], dict] = {}
 semaphore = asyncio.Semaphore(1)
 
 app = FastAPI(title="IntoFrame API", version="0.1.0")
@@ -105,6 +110,57 @@ def _process(job_id: str, image: Image.Image) -> dict:
 
 class DepthRequest(BaseModel):
     jobId: str
+
+
+class RestyleRequest(BaseModel):
+    jobId: str
+    style: str
+
+
+def _process_restyle(job_id: str, style: str) -> dict:
+    folder = DATA / job_id
+    target = folder / "styles" / style
+    target.mkdir(parents=True, exist_ok=True)
+    with Image.open(folder / "source.webp") as source_file:
+        source = source_file.convert("RGB")
+    with Image.open(folder / "mask.png") as mask_file:
+        mask = mask_file.convert("L")
+    restyle_jobs[(job_id, style)]["stage"] = "generating"
+    background, composite, metrics = restyle(source, mask, style)
+    restyle_jobs[(job_id, style)]["stage"] = "compositing"
+    background.save(target / "background.webp", "WEBP", quality=93, method=4)
+    composite.save(target / "composite.png", "PNG", optimize=True)
+    pad_x = max(12, round(source.width * OVERSCAN_FRACTION))
+    pad_y = max(12, round(source.height * OVERSCAN_FRACTION))
+    padded = cv2.copyMakeBorder(
+        np.asarray(background), pad_y, pad_y, pad_x, pad_x, cv2.BORDER_REFLECT_101
+    )
+    Image.fromarray(padded, "RGB").save(
+        target / "render-background.webp", "WEBP", quality=91, method=4
+    )
+    root_url = f"/media/{job_id}/styles/{style}"
+    return {
+        "jobId": job_id,
+        "style": style,
+        "backgroundUrl": f"{root_url}/background.webp",
+        "renderBackgroundUrl": f"{root_url}/render-background.webp",
+        "compositeUrl": f"{root_url}/composite.png",
+        "model": RESTYLE_MODEL_ID,
+        "metrics": metrics,
+    }
+
+
+async def _run_restyle(job_id: str, style: str) -> None:
+    key = (job_id, style)
+    async with semaphore:
+        try:
+            restyle_jobs[key]["stage"] = "loading-model"
+            result = await asyncio.to_thread(_process_restyle, job_id, style)
+            restyle_jobs[key] = {"status": "complete", "stage": "complete", "result": result}
+        except Exception as exc:
+            message = str(exc) if isinstance(exc, (ValueError, RuntimeError)) else "AI background generation failed. Check the backend log."
+            restyle_jobs[key] = {"status": "failed", "stage": "failed", "error": message}
+            print(f"Restyle job {job_id}/{style} failed: {exc!r}", flush=True)
 
 
 def _process_depth(job_id: str) -> dict:
@@ -210,3 +266,25 @@ def get_depth(job_id: str):
     if job_id not in depth_jobs:
         raise HTTPException(404, "Depth job not found. Start it with POST /api/depth.")
     return depth_jobs[job_id]
+
+
+@app.post("/api/restyle", status_code=202)
+async def create_restyle(request: RestyleRequest):
+    job = jobs.get(request.jobId)
+    if job is None or job["status"] != "complete":
+        raise HTTPException(404, "Source photo is unavailable. Upload it again.")
+    if request.style not in STYLES:
+        raise HTTPException(422, "Choose a supported background style.")
+    key = (request.jobId, request.style)
+    if key not in restyle_jobs:
+        restyle_jobs[key] = {"status": "processing", "stage": "queued"}
+        asyncio.create_task(_run_restyle(*key))
+    return {"id": request.jobId, "style": request.style, "status": restyle_jobs[key]["status"]}
+
+
+@app.get("/api/restyle/{job_id}/{style}")
+def get_restyle(job_id: str, style: str):
+    key = (job_id, style)
+    if key not in restyle_jobs:
+        raise HTTPException(404, "Style job not found. Generate it first.")
+    return restyle_jobs[key]

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+backend/data/
+*.pyc
+.env
+.edge-preview/
+screenshots/
+*.tsbuildinfo

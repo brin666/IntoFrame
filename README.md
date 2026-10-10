@@ -2,6 +2,9 @@
 
 Make your photos come alive. IntoFrame turns a single image into a cinematic break-the-frame composition with a bounded, depth-driven hold animation. This repository contains the **stage 2 local MVP**.
 
+An isolated [Subject Depth Mesh experiment](SUBJECT_DEPTH_EXPERIMENT.md) is available at
+`/experiment.html`; it does not replace the production preview.
+
 ## What works now
 
 - Upload JPG, PNG or WebP, up to 20 MB; the backend rejects unsupported or broken images.

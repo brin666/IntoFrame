@@ -1,5 +1,6 @@
 import { chromium } from "playwright";
 import { resolve } from "node:path";
+const BASE_URL = process.env.INTOFRAME_URL || "http://127.0.0.1:5187/";
 
 const browser = await chromium.launch({
   headless: true,
@@ -13,7 +14,7 @@ try {
   });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("http://127.0.0.1:5187/", { waitUntil: "networkidle" });
+  await page.goto(BASE_URL, { waitUntil: "networkidle" });
   await page
     .locator("input[type=file]")
     .setInputFiles(resolve("backend/data/smoke/person_astronaut_source.webp"));
@@ -88,7 +89,7 @@ try {
     ["pet", "pet_chelsea"],
     ["object", "object_coffee"],
   ]) {
-    await page.goto("http://127.0.0.1:5187/", { waitUntil: "networkidle" });
+    await page.goto(BASE_URL, { waitUntil: "networkidle" });
     await page
       .locator("input[type=file]")
       .setInputFiles(resolve(`backend/data/smoke/${sample}_source.webp`));
@@ -138,7 +139,7 @@ try {
     isMobile: true,
     hasTouch: true,
   });
-  await mobile.goto("http://127.0.0.1:5187/", { waitUntil: "networkidle" });
+  await mobile.goto(BASE_URL, { waitUntil: "networkidle" });
   await mobile
     .locator("input[type=file]")
     .setInputFiles(resolve("backend/data/smoke/object_coffee_source.webp"));

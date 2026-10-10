@@ -6,6 +6,17 @@ __pycache__/
 backend/data/
 *.pyc
 .env
+.env.*
+!.env.example
 .edge-preview/
 screenshots/
 *.tsbuildinfo
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.gguf
+*.npy
+*.npz
+*.log

@@ -1,4 +1,4 @@
-"""Local diffusion sky generation with the original masked subject restored."""
+"""Generate a sky texture field; semantic editing is enforced by compositing."""
 
 from __future__ import annotations
 
@@ -80,10 +80,13 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
     longest = 640
     factor = longest / max(source.size)
     target = tuple(max(64, round(size * factor / 64) * 64) for size in source.size)
-    edit_image = source.resize(target, Image.Resampling.LANCZOS)
+    # Do not hand original roads/buildings to the generator for replacement.
+    # Synthesize a sky texture independently, then sky_compositing applies the
+    # separately detected editable region in canonical source coordinates.
+    edit_image = Image.new("RGB", target, (127, 127, 127))
     # In this compact model, a black subject-shaped hole caused unwanted towers
     # and trees around the silhouette. Synthesize one coherent sky underlay,
-    # then restore the actual subject from the mask at full source resolution.
+    # then composite only confirmed sky at full source resolution.
     edit_mask = Image.new("L", target, 255)
     seed = int.from_bytes(hashlib.sha256(source.tobytes() + style.encode()).digest()[:4], "big")
     prompt = f"{STYLES[style]}, only open sky from edge to edge, no horizon, no ground, no objects"

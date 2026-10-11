@@ -13,7 +13,7 @@ const cases = [
   ...(process.env.INTOFRAME_TEST_PHOTO
     ? [{ label: "bigben", path: resolve(process.env.INTOFRAME_TEST_PHOTO) }]
     : []),
-  { label: "portrait", path: resolve("backend/data/smoke/person_astronaut_source.webp") },
+  { label: "portrait", path: resolve(process.env.INTOFRAME_PERSON_PHOTO || "backend/data/sky-inputs/outdoor-person.png") },
 ];
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const results = [];
@@ -26,8 +26,10 @@ async function geometry(page) {
     const cameraX = Number(stage.dataset.cameraX || 0);
     const wake = Number(stage.style.getPropertyValue("--wake") || 0);
     const subjectX = parseFloat(stage.style.getPropertyValue("--subject-parallax-x")) || 0;
-    const backgroundX = -focal * cameraX / (3.5 - wake * .035);
-    return { cameraX, wake, subjectX, backgroundX, separation: Math.abs(subjectX - backgroundX),
+    const zoom = Number(stage.style.getPropertyValue("--photo-zoom")) || 1;
+    const skyZ = Number(stage.dataset.skyZ || 0);
+    const backgroundX = -focal * cameraX / (3.5 - wake * .035 - skyZ);
+    return { cameraX, wake, subjectX: subjectX * zoom, backgroundX: backgroundX * zoom, separation: Math.abs(subjectX - backgroundX) * zoom,
       width: stage.clientWidth, height: stage.clientHeight,
       awake: stage.classList.contains("is-awake"), interactive: stage.classList.contains("spatial-ready"),
       mode: host.dataset.backgroundMode,
@@ -119,7 +121,7 @@ try {
       const source = (await (await page.request.get(`${base}/api/jobs/${id}`)).json()).result;
       const depth = (await (await page.request.get(`${base}/api/depth/${id}`)).json()).result;
       const rest = await geometry(page);
-      assert.equal(rest.mode, "sky-plane");
+      assert.equal(rest.mode, "sky-layers");
       assert(rest.background.includes("/styles/dreamy-pink/render-background.webp"));
       assert(rest.subject.includes("/styles/dreamy-pink/subject.png"));
       assert.equal(rest.topBar, rest.bottomBar);

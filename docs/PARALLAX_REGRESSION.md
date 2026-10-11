@@ -1,5 +1,6 @@
 # Generated-result hold parallax — 2026-10-11
 
+> Historical checkpoint before Sky Restyling First. Current behavior and acceptance are in [SKY_REGRESSION.md](SKY_REGRESSION.md); indoor astronaut, coffee and cat no longer generate sky.
 ## Diagnosis before editing
 
 The generated result was already connected to Three.js. `App.tsx` replaces `DepthResult.backgroundUrl` with the selected style's `renderBackgroundUrl`. `SpatialFrameScene` loads that padded generated texture. It does **not** load `render-depth.png` in sky mode. The native generated `backgroundUrl` is used by the still PNG exporter.

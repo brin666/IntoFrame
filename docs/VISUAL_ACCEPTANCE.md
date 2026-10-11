@@ -1,5 +1,6 @@
 # Actual output acceptance — 2026-10-10
 
+> Historical checkpoint before Sky Restyling First. Current behavior and acceptance are in [SKY_REGRESSION.md](SKY_REGRESSION.md); indoor astronaut, coffee and cat no longer generate sky.
 Visual inspection was performed at ordinary browser preview size and on enlarged, identically cropped edge pairs. Functional test success is recorded separately from visual suitability. All six outputs below were produced by the actual local model and browser, not mockups.
 
 ## Current scope and recommended presentation

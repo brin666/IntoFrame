@@ -7,7 +7,7 @@ from PIL import Image
 from scipy.ndimage import distance_transform_edt
 
 
-def recover_subject_edges(source: Image.Image, mask: Image.Image) -> tuple[Image.Image, dict]:
+def recover_subject_edges(source: Image.Image, mask: Image.Image, editable: Image.Image | None = None) -> tuple[Image.Image, dict]:
     """Recover RGB only in a <=4px semitransparent silhouette band.
 
     Treat observed edge RGB as alpha*foreground + (1-alpha)*old_background.
@@ -18,6 +18,8 @@ def recover_subject_edges(source: Image.Image, mask: Image.Image) -> tuple[Image
     """
     if source.size != mask.size:
         raise ValueError("Source and subject mask sizes differ.")
+    if editable is not None and editable.size != source.size:
+        raise ValueError("Editable sky and source sizes differ.")
     rgb = np.asarray(source.convert("RGB"), dtype=np.uint8)
     alpha_bytes = np.asarray(mask.convert("L"), dtype=np.uint8)
     alpha = alpha_bytes.astype(np.float32) / 255
@@ -29,6 +31,15 @@ def recover_subject_edges(source: Image.Image, mask: Image.Image) -> tuple[Image
         bg_distance, bg_index = distance_transform_edt(~clear, return_indices=True)
         fg_distance, fg_index = distance_transform_edt(~opaque, return_indices=True)
         band = (alpha_bytes > 2) & (alpha_bytes < 250) & (bg_distance <= 4) & (fg_distance <= 8)
+        if editable is not None:
+            # Only recover colors next to sky that actually changes. Ground
+            # contacts and other unedited scene edges retain observed RGB.
+            editable_pixels = np.asarray(editable.convert("L")) > 0
+            if editable_pixels.any():
+                sky_distance = distance_transform_edt(~editable_pixels)
+                band &= sky_distance <= 10
+            else:
+                band[:] = False
         if band.any():
             observed = rgb[band].astype(np.float32)
             old_bg = rgb[bg_index[0][band], bg_index[1][band]].astype(np.float32)

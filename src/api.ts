@@ -6,6 +6,8 @@ export interface Result {
   maskUrl: string;
   subjectUrl: string;
   subjectBounds: [number, number, number, number];
+  subjectStats: { occupancy: number; leftEdgeFraction: number; rightEdgeFraction: number };
+  sky: { eligible: boolean; status: "supported" | "no-sky" | "unavailable" | "uncertain"; skyFraction: number; reason: string | null; bounds: [number, number, number, number] | null; maskUrl: string; model: string };
   composition: { scale: number; focusX: number; focusY: number };
   compositionNotice: string | null;
   model: string;
@@ -30,6 +32,8 @@ export interface DepthResult {
   depthUrl: string;
   renderDepthUrl: string;
   backgroundUrl: string;
+  renderSkyUrl?: string;
+  renderSceneUrl?: string;
   model: string;
   backgroundMethod: string;
 }
@@ -50,7 +54,10 @@ export interface RestyleResult {
   renderBackgroundUrl: string;
   compositeUrl: string;
   subjectUrl: string;
-  backgroundGeometry: "sky-plane";
+  backgroundGeometry: "sky-layers";
+  renderSkyUrl: string;
+  renderSceneUrl: string;
+  editableSkyUrl: string;
   model: string;
   metrics: { seconds: number; modelSize: [number, number]; seed: number; edgePixelsChanged: number };
 }

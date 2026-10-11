@@ -52,6 +52,7 @@ const stageLabels: Record<string, string> = {
   queued: "Waiting for the image engine",
   preparing: "Preparing your image",
   segmenting: "Finding your subject",
+  "checking-sky": "Checking visible sky",
 };
 const styleOptions: { id: StyleId; name: string; detail: string }[] = [
   { id: "dreamy-pink", name: "Dreamy Pink", detail: "Pink, lavender, soft clouds" },
@@ -76,6 +77,8 @@ function App() {
   const [readyDepth, setReadyDepth] = useState<DepthResult | null>(null);
   const [spatialError, setSpatialError] = useState("");
   const [holding, setHolding] = useState(false);
+  const [touchHold, setTouchHold] = useState(false);
+  const [motionNotice, setMotionNotice] = useState("");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -220,7 +223,8 @@ function App() {
   }
 
   async function generateStyle() {
-    if (!result || generating) return;
+    if (!result || generating || !result.sky.eligible) return;
+    stopHold();
     if (styles[selectedStyle]) {
       setShowBefore(false);
       return;
@@ -265,6 +269,7 @@ function App() {
   function startHold(event: PointerEvent<HTMLDivElement>) {
     if (!canHold || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
+    setTouchHold(event.pointerType === "touch");
     heldPointerRef.current = event.pointerId;
     event.currentTarget.setPointerCapture(event.pointerId);
     setHolding(true);
@@ -308,7 +313,7 @@ function App() {
         horizontalLimit,
       )
     : 0;
-  const yShift = result
+  const baseYShift = result
     ? clamp(
         result.subjectBounds[1] <= result.height * 0.04
           ? Math.max(
@@ -320,6 +325,12 @@ function App() {
         verticalLimit,
       )
     : 0;
+  // Keep a visible sky band when framing a low-positioned outdoor subject.
+  // The identical center transform is shared by Before, After and PNG export.
+  const skyBottom = result?.sky.bounds ? result.sky.bounds[3] / result.height : 1;
+  const yShift = result?.sky.eligible
+    ? clamp(Math.max(baseYShift, FILM_BAR_FRACTION + 0.15 - (1 - zoom) / 2 - zoom * skyBottom), -verticalLimit, verticalLimit)
+    : baseYShift;
   const previewStyle = result
     ? ({
         aspectRatio: `${result.width} / ${result.height}`,
@@ -348,7 +359,8 @@ function App() {
   const showingStyled = Boolean(styledResult && !showBefore);
   const visibleDepth = useMemo(
     () => depthResult && showingStyled && styledResult
-      ? { ...depthResult, backgroundUrl: styledResult.renderBackgroundUrl }
+      ? { ...depthResult, backgroundUrl: styledResult.renderBackgroundUrl,
+          renderSkyUrl: styledResult.renderSkyUrl, renderSceneUrl: styledResult.renderSceneUrl }
       : depthResult,
     [depthResult, showingStyled, styledResult],
   );
@@ -363,6 +375,7 @@ function App() {
   useEffect(() => {
     setReadyDepth(null);
     setSpatialError("");
+    setMotionNotice("");
     stopHold();
   }, [visibleDepth, stopHold]);
 
@@ -469,11 +482,14 @@ function App() {
                     <Suspense fallback={null}>
                       <SpatialFrameScene
                         depth={visibleDepth}
-                        backgroundMode={showingStyled ? "sky-plane" : "photo-depth"}
+                        backgroundMode={showingStyled ? "sky-layers" : "photo-depth"}
+                        result={result}
+                        zoom={zoom}
+                        shiftX={xShift}
+                        touch={touchHold}
+                        onMotionNotice={setMotionNotice}
                         stage={photoStageRef}
                         active={holding && canHold}
-                        // A complete generated sky has no hidden subject hole.
-                        // Keep the old edge limit only for the original filled photo.
                         travelScale={showingStyled ? 1 : touchesImageEdge ? 0.45 : 1}
                         onReady={(renderedDepth) => { setReadyDepth(renderedDepth); setSpatialError(""); }}
                         onUnavailable={(message) => {
@@ -516,7 +532,8 @@ function App() {
                 <button
                   key={option.id}
                   className={`style-choice ${selectedStyle === option.id ? "selected" : ""}`}
-                  onClick={() => { setSelectedStyle(option.id); setShowBefore(false); setGenerationError(""); }}
+                  disabled={generating}
+                  onClick={() => { stopHold(); setSelectedStyle(option.id); setShowBefore(false); setGenerationError(""); }}
                   aria-pressed={selectedStyle === option.id}
                 >
                   <span className={`style-swatch ${option.id}`} />
@@ -526,7 +543,7 @@ function App() {
               ))}
             </div>
             <div className="style-actions">
-              <button className="style-primary" onClick={() => void generateStyle()} disabled={generating}>
+              <button className="style-primary" onClick={() => void generateStyle()} disabled={generating || !result.sky.eligible}>
                 {generating ? <span className="loading-spinner" /> : <Sparkles size={17} />}
                 {generating ? (restyleStageLabels[generationStage] || "Generating your background") : styledResult ? "Show result" : "Generate background"}
               </button>
@@ -540,7 +557,8 @@ function App() {
             {generating && <p className="style-status" role="status">{restyleStageLabels[generationStage] || "Generating"} · First use downloads model weights and can take several minutes.</p>}
             {generationError && <p className="style-error" role="alert">{generationError}</p>}
             {exportError && <p className="style-error" role="alert">{exportError}</p>}
-            <p className="style-status">PNG saves the centered, still composition. {selectedStyle === "cinematic-night" ? "Night is a stylized composite; your subject keeps its original lighting." : "The whole background becomes sky; original scene layout is not retained."}</p>
+            {!result.sky.eligible && <p className="style-status" role="status">{result.sky.reason}</p>}
+            <p className="style-status">Only confirmed sky is edited. Ground and other scene details stay. PNG saves the centered, still composition. {selectedStyle === "cinematic-night" && "Your subject keeps its original lighting."}</p>
           </section>
           <div className="preview-footer">
             <div className="result-caption">
@@ -571,6 +589,7 @@ function App() {
           {result.compositionNotice && (
             <p className="composition-notice">{result.compositionNotice}</p>
           )}
+          {motionNotice && showingStyled && <p className="composition-notice" role="status">{motionNotice}</p>}
           {showControls && (
             <section
               className="controls-panel"

@@ -28,6 +28,19 @@ try {
     const sourceResult = (await (await page.request.get(`${base}/api/jobs/${jobId}`)).json()).result;
     const depthResult = (await (await page.request.get(`${base}/api/depth/${jobId}`)).json()).result;
     const record = { label: input.label, inputSHA256: createHash("sha256").update(readFileSync(input.path)).digest("hex"), publicAllowed: input.publicAllowed, uploadSeconds: (performance.now() - started) / 1000, sourceResult, depthResult, styles: [] };
+    if (input.expectedSky !== undefined && sourceResult.sky.eligible !== input.expectedSky)
+      throw new Error(`${input.label}: unexpected sky eligibility`);
+    if (!sourceResult.sky.eligible) {
+      if (await page.getByRole("button", { name: "Generate background", exact: true }).isEnabled())
+        throw new Error("Unsupported photo enables generation");
+      const response = await page.request.post(`${base}/api/restyle`, { data: { jobId, style: "dreamy-pink" } });
+      if (response.status() !== 422) throw new Error("Unsupported photo was not rejected");
+      record.rejected = sourceResult.sky.reason;
+      manifest.cases.push(record);
+      writeFileSync(join(root, "manifest.json"), JSON.stringify(manifest, null, 2));
+      await page.close();
+      continue;
+    }
     for (const style of input.styles) {
       const out = join(root, input.label, style);
       mkdirSync(out, { recursive: true });

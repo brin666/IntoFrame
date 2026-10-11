@@ -21,6 +21,8 @@ from depth_estimator import OVERSCAN_FRACTION
 from restyler import MODEL_ID as RESTYLE_MODEL_ID, STYLES, restyle
 from compositing import composite_subject, recover_subject_edges
 from segmenter import MODEL_ID, segment
+from sky_detector import detect_sky, MODEL_ID as SKY_MODEL_ID
+from sky_compositing import build_sky_layers
 
 BASE = Path(__file__).resolve().parent
 DATA = BASE / "data"
@@ -85,6 +87,15 @@ def _process(job_id: str, image: Image.Image) -> dict:
     foreground = image.copy().convert("RGBA")
     foreground.putalpha(mask)
     foreground.save(folder / "subject.png")
+    jobs[job_id]["stage"] = "checking-sky"
+    try:
+        editable_sky, sky = detect_sky(image, mask)
+    except RuntimeError:
+        editable_sky = Image.new("L", image.size, 0)
+        sky = {"eligible": False, "status": "unavailable", "skyFraction": 0,
+               "model": SKY_MODEL_ID,
+               "reason": "Sky analysis is unavailable. Check the local model setup and upload again."}
+    editable_sky.save(folder / "editable-sky.png")
     width, height = image.size
     left, top, right, bottom = bbox
     subject_height = (bottom - top) / height
@@ -102,12 +113,24 @@ def _process(job_id: str, image: Image.Image) -> dict:
         "id": job_id,
         "width": width, "height": height,
         "subjectBounds": [left, top, right, bottom],
+        "subjectStats": _subject_stats(mask),
+        "sky": {**sky, "bounds": editable_sky.getbbox(), "maskUrl": f"/media/{job_id}/editable-sky.png"},
         "composition": {"scale": round(scale, 3), "focusX": round(cx, 4), "focusY": round(cy, 4)},
         "compositionNotice": composition_notice,
         "sourceUrl": f"/media/{job_id}/source.webp",
         "maskUrl": f"/media/{job_id}/mask.png",
         "subjectUrl": f"/media/{job_id}/subject.png",
         "model": MODEL_ID,
+    }
+
+
+def _subject_stats(mask: Image.Image) -> dict:
+    alpha = np.asarray(mask.convert("L"))
+    edge_width = max(1, round(mask.width * 0.01))
+    return {
+        "occupancy": round(float((alpha >= 35).mean()), 5),
+        "leftEdgeFraction": round(float((alpha[:, :edge_width] >= 160).any(axis=1).mean()), 5),
+        "rightEdgeFraction": round(float((alpha[:, -edge_width:] >= 160).any(axis=1).mean()), 5),
     }
 
 
@@ -128,10 +151,15 @@ def _process_restyle(job_id: str, style: str) -> dict:
         source = source_file.convert("RGB")
     with Image.open(folder / "mask.png") as mask_file:
         mask = mask_file.convert("L")
+    with Image.open(folder / "editable-sky.png") as sky_file:
+        editable_sky = sky_file.convert("L")
+    if not editable_sky.getbbox():
+        raise ValueError("No editable sky was detected. Choose an outdoor photo with visible sky.")
     restyle_jobs[(job_id, style)]["stage"] = "generating"
-    background, composite, metrics = restyle(source, mask, style)
+    generated_sky, _, metrics = restyle(source, mask, style)
+    background, preserved_scene, sky_underlay = build_sky_layers(source, mask, editable_sky, generated_sky)
     restyle_jobs[(job_id, style)]["stage"] = "compositing"
-    subject, edge_metrics = recover_subject_edges(source, mask)
+    subject, edge_metrics = recover_subject_edges(source, mask, sky_underlay)
     composite = composite_subject(subject, background)
     # Preview, padded texture, composite and export must share identical RGB.
     background.save(target / "background.webp", "WEBP", lossless=True, method=4)
@@ -145,6 +173,14 @@ def _process_restyle(job_id: str, style: str) -> dict:
     Image.fromarray(padded, "RGB").save(
         target / "render-background.webp", "WEBP", lossless=True, method=4
     )
+    for name, layer in (("render-sky.webp", generated_sky), ("render-scene.png", preserved_scene)):
+        padded_layer = cv2.copyMakeBorder(np.asarray(layer), pad_y, pad_y, pad_x, pad_x, cv2.BORDER_REFLECT_101)
+        output = Image.fromarray(padded_layer)
+        if name.endswith("webp"):
+            output.save(target / name, "WEBP", lossless=True, method=4)
+        else:
+            output.save(target / name, "PNG", optimize=True)
+    sky_underlay.save(target / "sky-underlay.png")
     root_url = f"/media/{job_id}/styles/{style}"
     result = {
         "jobId": job_id,
@@ -153,7 +189,10 @@ def _process_restyle(job_id: str, style: str) -> dict:
         "renderBackgroundUrl": f"{root_url}/render-background.webp",
         "compositeUrl": f"{root_url}/composite.png",
         "subjectUrl": f"{root_url}/subject.png",
-        "backgroundGeometry": "sky-plane",
+        "renderSkyUrl": f"{root_url}/render-sky.webp",
+        "renderSceneUrl": f"{root_url}/render-scene.png",
+        "editableSkyUrl": f"/media/{job_id}/editable-sky.png",
+        "backgroundGeometry": "sky-layers",
         "model": RESTYLE_MODEL_ID,
         "metrics": {**metrics, **edge_metrics},
     }
@@ -286,6 +325,9 @@ async def create_restyle(request: RestyleRequest):
         raise HTTPException(404, "Source photo is unavailable. Upload it again.")
     if request.style not in STYLES:
         raise HTTPException(422, "Choose a supported background style.")
+    sky = job.get("result", {}).get("sky", {})
+    if not sky.get("eligible"):
+        raise HTTPException(422, sky.get("reason") or "No editable sky detected. Upload an outdoor photo with visible sky.")
     key = (request.jobId, request.style)
     if key not in restyle_jobs or restyle_jobs[key]["status"] == "failed":
         restyle_jobs[key] = {"status": "processing", "stage": "queued"}

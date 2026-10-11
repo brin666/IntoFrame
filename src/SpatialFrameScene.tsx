@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import * as THREE from "three";
-import type { DepthResult } from "./api";
+import type { DepthResult, Result } from "./api";
+import { calculateParallax, subjectZ, SKY_Z } from "./parallax";
 
 const CAMERA_DISTANCE = 3.5;
 const FOV = 35;
@@ -8,7 +9,12 @@ const DEPTH_SPAN = 0.62;
 
 interface Props {
   depth: DepthResult;
-  backgroundMode?: "photo-depth" | "sky-plane";
+  backgroundMode?: "photo-depth" | "sky-layers";
+  result: Result;
+  zoom: number;
+  shiftX: number;
+  touch: boolean;
+  onMotionNotice: (notice: string) => void;
   stage: RefObject<HTMLDivElement | null>;
   active: boolean;
   travelScale: number;
@@ -30,6 +36,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export function SpatialFrameScene({
   depth,
   backgroundMode = "photo-depth",
+  result,
+  zoom,
+  shiftX,
+  touch,
+  onMotionNotice,
   stage,
   active,
   travelScale,
@@ -40,6 +51,8 @@ export function SpatialFrameScene({
   const activeRef = useRef(active);
   const onUnavailableRef = useRef(onUnavailable);
   const onReadyRef = useRef(onReady);
+  const motionRef = useRef({ result, zoom, shiftX, touch, onMotionNotice });
+  motionRef.current = { result, zoom, shiftX, touch, onMotionNotice };
   activeRef.current = active;
   onUnavailableRef.current = onUnavailable;
   onReadyRef.current = onReady;
@@ -55,19 +68,25 @@ export function SpatialFrameScene({
     let material: THREE.MeshBasicMaterial | undefined;
     let texture: THREE.Texture | undefined;
     let observer: ResizeObserver | undefined;
+    const extraResources: { geometry: THREE.PlaneGeometry; material: THREE.MeshBasicMaterial; texture: THREE.Texture }[] = [];
 
     async function setup() {
       try {
-        const [background, depthImage] = await Promise.all([
-          loadImage(depth.backgroundUrl),
+        const layered = backgroundMode === "sky-layers";
+        if (layered && (!depth.renderSkyUrl || !depth.renderSceneUrl))
+          throw new Error("The current sky layers are missing. Generate this photo again.");
+        const [background, depthImage, preservedScene] = await Promise.all([
+          loadImage(layered ? depth.renderSkyUrl! : depth.backgroundUrl),
           backgroundMode === "photo-depth" ? loadImage(depth.renderDepthUrl) : Promise.resolve(null),
+          layered ? loadImage(depth.renderSceneUrl!) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         if (
           background.width !== depth.renderWidth ||
           background.height !== depth.renderHeight ||
           (depthImage && (depthImage.width !== depth.renderWidth ||
-          depthImage.height !== depth.renderHeight))
+          depthImage.height !== depth.renderHeight)) ||
+          (preservedScene && (preservedScene.width !== depth.renderWidth || preservedScene.height !== depth.renderHeight))
         ) {
           throw new Error("Spatial image and depth coordinates do not match.");
         }
@@ -92,11 +111,11 @@ export function SpatialFrameScene({
         const planeWidth = (visibleWidth * depth.renderWidth) / depth.width;
         const planeHeight = (visibleHeight * depth.renderHeight) / depth.height;
         // The model PNG is 8-bit grayscale. Sample in its native padded coordinate system.
-        const segmentsX = backgroundMode === "sky-plane" ? 1 : Math.min(
+        const segmentsX = layered ? 1 : Math.min(
           96,
           Math.max(48, Math.round(depth.width / 12)),
         );
-        const segmentsY = backgroundMode === "sky-plane" ? 1 : Math.min(
+        const segmentsY = layered ? 1 : Math.min(
           96,
           Math.max(48, Math.round(depth.height / 12)),
         );
@@ -121,7 +140,7 @@ export function SpatialFrameScene({
           );
           // Generated sky has no correspondence to the replaced photo geometry.
           const near = pixels ? pixels[(py * depth.renderWidth + px) * 4] / 255 : 0;
-          const z = near * DEPTH_SPAN;
+          const z = layered ? SKY_Z : near * DEPTH_SPAN;
           // At rest, project every displaced vertex back to its original image coordinate.
           const compensation = (CAMERA_DISTANCE - z) / CAMERA_DISTANCE;
           positions.setXYZ(
@@ -144,6 +163,23 @@ export function SpatialFrameScene({
         });
         const scene = new THREE.Scene();
         scene.add(new THREE.Mesh(geometry, material));
+        const foregroundZ = subjectZ(depth.foregroundDepth);
+        if (preservedScene) {
+          // Preserve scene supports at the subject's virtual depth. This is a
+          // deliberate two-layer approximation, with no triangles bridging a
+          // building/sky discontinuity and no inherited old sky depth relief.
+          const compensation = (CAMERA_DISTANCE - foregroundZ) / CAMERA_DISTANCE;
+          const g = new THREE.PlaneGeometry(planeWidth * compensation, planeHeight * compensation);
+          const t = new THREE.Texture(preservedScene);
+          t.colorSpace = THREE.SRGBColorSpace;
+          t.minFilter = t.magFilter = THREE.LinearFilter;
+          t.needsUpdate = true;
+          const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false });
+          const mesh = new THREE.Mesh(g, m);
+          mesh.position.z = foregroundZ;
+          scene.add(mesh);
+          extraResources.push({ geometry: g, texture: t, material: m });
+        }
         const camera = new THREE.PerspectiveCamera(
           FOV,
           width / height,
@@ -162,6 +198,8 @@ export function SpatialFrameScene({
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute("aria-hidden", "true");
         renderer.domElement.dataset.backgroundUrl = depth.backgroundUrl;
+        renderer.domElement.dataset.skyUrl = depth.renderSkyUrl || "";
+        renderer.domElement.dataset.sceneUrl = depth.renderSceneUrl || "";
         renderer.domElement.style.visibility = "hidden";
         element!.appendChild(renderer.domElement);
 
@@ -185,22 +223,7 @@ export function SpatialFrameScene({
         let wake = 0;
         let lastTime = performance.now();
         let awakeSince = lastTime;
-        const overscanWorld =
-          (visibleWidth * Math.min(depth.padding.left, depth.padding.right)) /
-          depth.width;
-        // Keep the original conservative travel bound in both modes. A sky
-        // plane could allow more travel, but quality fixes must not add sway.
-        const maxNearZ = DEPTH_SPAN;
-        const safeCameraX =
-          Math.min(
-            0.06,
-            ((overscanWorld * (CAMERA_DISTANCE - maxNearZ)) / CAMERA_DISTANCE) *
-              0.55,
-          ) * travelScale;
-        const foregroundZ = Math.max(
-          0.78,
-          Math.min(0.98, depth.foregroundDepth * DEPTH_SPAN + 0.48),
-        );
+        let previousNotice = "";
         const prefersReduced = window.matchMedia(
           "(prefers-reduced-motion: reduce)",
         );
@@ -212,19 +235,40 @@ export function SpatialFrameScene({
           const isAwake = activeRef.current && !prefersReduced.matches;
           if (!isAwake) awakeSince = now;
           const phase = (now - awakeSince) / 1000;
+          const motion = motionRef.current;
+          const travel = calculateParallax({
+            width: element!.clientWidth, height: element!.clientHeight,
+            zoom: motion.zoom, shiftX: motion.shiftX, sourceWidth: depth.width,
+            paddingX: depth.padding, subjectBounds: motion.result.subjectBounds,
+            subjectStats: motion.result.subjectStats, foregroundDepth: depth.foregroundDepth,
+            touch: motion.touch, travelScale, backgroundZ: layered ? SKY_Z : 0,
+          });
+          const notice = layered ? travel.notice || "" : "";
+          if (notice !== previousNotice) {
+            previousNotice = notice;
+            motion.onMotionNotice(notice);
+          }
           const desiredWake = isAwake ? 1 : 0;
           wake +=
             (desiredWake - wake) * (1 - Math.exp(-dt * (isAwake ? 3.8 : 5.5)));
-          const targetX = isAwake
-            ? safeCameraX *
-              (0.7 * Math.sin(phase * 1.35) + 0.3 * Math.sin(phase * 2.1)) *
-              wake
-            : 0;
+          const wave = 0.7 * Math.sin(phase * 1.35) + 0.3 * Math.sin(phase * 2.1);
+          // At a source side cut, swing only away from the missing silhouette.
+          // A squared wave gives a smooth return, including at direction changes.
+          const targetX = !isAwake ? 0 : travel.leftTravel < 1e-8
+            ? travel.rightTravel * wave * wave * wake
+            : travel.rightTravel < 1e-8
+              ? -travel.leftTravel * wave * wave * wake
+              : wave * (wave < 0 ? travel.leftTravel : travel.rightTravel) * wake;
           // Critically damped camera spring. Position and velocity remain continuous on release.
-          const omega = isAwake ? 7 : 8;
+          const omega = isAwake ? (motion.touch ? 6 : 7) : 8;
           velocityX +=
             ((targetX - cameraX) * omega * omega - 2 * omega * velocityX) * dt;
           cameraX += velocityX * dt;
+          // Recalculate limits on resize/crop; the spring must never overshoot
+          // into a source cut even while settling from a previous composition.
+          const boundedX = Math.max(-travel.leftTravel, Math.min(travel.rightTravel, cameraX));
+          if (boundedX !== cameraX) velocityX = 0;
+          cameraX = boundedX;
           camera.position.x = cameraX;
           camera.position.z = CAMERA_DISTANCE - wake * 0.035;
           if (
@@ -258,6 +302,8 @@ export function SpatialFrameScene({
             );
             stageElement!.style.setProperty("--wake", wake.toFixed(4));
             stageElement!.dataset.cameraX = cameraX.toFixed(5);
+            stageElement!.dataset.skyZ = (layered ? SKY_Z : 0).toString();
+            stageElement!.dataset.targetGap = travel.targetGap.toFixed(2);
             needsFirstFrame = false;
           }
           frame = requestAnimationFrame(render);
@@ -282,10 +328,13 @@ export function SpatialFrameScene({
       geometry?.dispose();
       material?.dispose();
       texture?.dispose();
+      extraResources.forEach(({ geometry: g, material: m, texture: t }) => { g.dispose(); m.dispose(); t.dispose(); });
       stageElement.style.removeProperty("--subject-parallax-x");
       stageElement.style.removeProperty("--subject-parallax-scale");
       stageElement.style.removeProperty("--wake");
       delete stageElement.dataset.cameraX;
+      delete stageElement.dataset.skyZ;
+      delete stageElement.dataset.targetGap;
     };
   }, [depth, backgroundMode, stage, travelScale]);
 

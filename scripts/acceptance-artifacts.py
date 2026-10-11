@@ -71,9 +71,9 @@ def main():
             }
             assert stats["opaqueChanged"] == stats["alphaChanged"] == stats["changesOutsideBand"] == 0, stats
             assert stats["maxChannelCorrection"] <= 48 and stats["barHeightDifference"] < 0.1, stats
-            assert stats["backgroundMode"] == "sky-plane", stats
+            assert stats["backgroundMode"] in {"sky-plane", "sky-layers"}, stats
             report.append(stats)
-            for name, bounds in regions[case["label"]].items():
+            for name, bounds in regions.get(case["label"], {}).items():
                 sheet([("Old edges / same background", before.crop(bounds)), ("Recovered edges / same alpha", after.crop(bounds))], folder / f"edge-{name}-compare.png", (440, 500))
             sheet([("Original preview", Image.open(folder / "preview-before.png")), ("Generated preview", preview)], folder / "before-after.png", (520, 650))
             sheet([("Browser centered preview", preview), ("Centered PNG export", export)], folder / "preview-export.png", (520, 650))

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { mkdirSync } from "node:fs";
 
 const base = process.env.INTOFRAME_URL || "http://127.0.0.1:5187";
-const photo = resolve(process.env.INTOFRAME_TEST_PHOTO || "backend/data/smoke/person_astronaut_source.webp");
+const photo = resolve(process.env.INTOFRAME_TEST_PHOTO || "backend/data/sky-inputs/outdoor-person.png");
 const browser = await chromium.launch({
   headless: true,
   executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
@@ -39,7 +39,7 @@ try {
   }
   await page.getByRole("button", { name: "View after" }).click();
   await page.locator(".photo-stage.spatial-ready").waitFor({ timeout: 120000 });
-  if (await page.locator(".spatial-canvas").getAttribute("data-background-mode") !== "sky-plane")
+  if (await page.locator(".spatial-canvas").getAttribute("data-background-mode") !== "sky-layers")
     throw new Error("Generated sky inherited the original scene depth.");
   if (!(await page.locator(".subject-layer img").getAttribute("src"))?.includes("/styles/dreamy-pink/subject.png"))
     throw new Error("Styled preview did not use the recovered edge layer.");
@@ -81,7 +81,7 @@ try {
 
   // A failed generated texture is a render failure, not a permanent depth failure.
   // Fail only image transport; Night still comes from the real local AI model.
-  const brokenTexture = "**/styles/cinematic-night/render-background.webp";
+  const brokenTexture = "**/styles/cinematic-night/render-sky.webp";
   await page.route(brokenTexture, route => route.fulfill({ status: 503, body: "Temporary texture failure" }));
   await page.getByRole("button", { name: "Cinematic Night", exact: false }).click();
   await page.getByRole("button", { name: "Generate background", exact: true }).click();
@@ -103,7 +103,7 @@ try {
     throw new Error("Recovered Night scene did not animate.");
   await page.mouse.up();
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
-  console.log(`Photo: real generation in all three styles, transport retry, before/after, sky plane, hold/settle, style-switch cancellation, texture failure recovery, PNG export OK. cameraX=${cameraX.toFixed(5)}`);
+  console.log(`Photo: real generation in all three styles, transport retry, before/after, sky layers, hold/settle, style-switch cancellation, texture failure recovery, PNG export OK. cameraX=${cameraX.toFixed(5)}`);
   console.log(output);
 } finally {
   await browser.close();

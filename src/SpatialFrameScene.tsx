@@ -12,7 +12,7 @@ interface Props {
   stage: RefObject<HTMLDivElement | null>;
   active: boolean;
   travelScale: number;
-  onReady: () => void;
+  onReady: (renderedDepth: DepthResult) => void;
   onUnavailable: (message: string) => void;
 }
 
@@ -71,20 +71,16 @@ export function SpatialFrameScene({
         ) {
           throw new Error("Spatial image and depth coordinates do not match.");
         }
-        const sampleCanvas = document.createElement("canvas");
-        sampleCanvas.width = depth.renderWidth;
-        sampleCanvas.height = depth.renderHeight;
-        const context = sampleCanvas.getContext("2d", {
-          willReadFrequently: true,
-        });
-        if (!context) throw new Error("Canvas depth sampling is unavailable.");
-        if (depthImage) context.drawImage(depthImage, 0, 0);
-        const pixels = context.getImageData(
-          0,
-          0,
-          depth.renderWidth,
-          depth.renderHeight,
-        ).data;
+        let pixels: Uint8ClampedArray | null = null;
+        if (depthImage) {
+          const sampleCanvas = document.createElement("canvas");
+          sampleCanvas.width = depth.renderWidth;
+          sampleCanvas.height = depth.renderHeight;
+          const context = sampleCanvas.getContext("2d", { willReadFrequently: true });
+          if (!context) throw new Error("Canvas depth sampling is unavailable.");
+          context.drawImage(depthImage, 0, 0);
+          pixels = context.getImageData(0, 0, depth.renderWidth, depth.renderHeight).data;
+        }
 
         const width = element!.clientWidth;
         const height = element!.clientHeight;
@@ -124,7 +120,7 @@ export function SpatialFrameScene({
             Math.max(0, Math.round((1 - v) * (depth.renderHeight - 1))),
           );
           // Generated sky has no correspondence to the replaced photo geometry.
-          const near = backgroundMode === "sky-plane" ? 0 : pixels[(py * depth.renderWidth + px) * 4] / 255;
+          const near = pixels ? pixels[(py * depth.renderWidth + px) * 4] / 255 : 0;
           const z = near * DEPTH_SPAN;
           // At rest, project every displaced vertex back to its original image coordinate.
           const compensation = (CAMERA_DISTANCE - z) / CAMERA_DISTANCE;
@@ -165,6 +161,7 @@ export function SpatialFrameScene({
         renderer.setSize(width, height);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.domElement.setAttribute("aria-hidden", "true");
+        renderer.domElement.dataset.backgroundUrl = depth.backgroundUrl;
         renderer.domElement.style.visibility = "hidden";
         element!.appendChild(renderer.domElement);
 
@@ -240,7 +237,7 @@ export function SpatialFrameScene({
             renderer.render(scene, camera);
             if (renderer.domElement.style.visibility === "hidden") {
               renderer.domElement.style.visibility = "visible";
-              onReadyRef.current();
+              onReadyRef.current(depth);
             }
             // Foreground stays in the DOM above the bars; its movement uses the same projection.
             const focalPixels =

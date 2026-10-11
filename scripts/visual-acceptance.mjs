@@ -24,7 +24,7 @@ try {
     await page.locator("input[type=file]").setInputFiles(input.path);
     const jobId = (await (await uploadResponse).json()).id;
     await page.getByText("YOUR FRAME IS READY").waitFor({ timeout: 180000 });
-    await page.locator(".photo-stage.spatial-ready").waitFor({ timeout: 180000 });
+    await page.locator(".spatial-canvas canvas").waitFor({ timeout: 180000 });
     const sourceResult = (await (await page.request.get(`${base}/api/jobs/${jobId}`)).json()).result;
     const depthResult = (await (await page.request.get(`${base}/api/depth/${jobId}`)).json()).result;
     const record = { label: input.label, inputSHA256: createHash("sha256").update(readFileSync(input.path)).digest("hex"), publicAllowed: input.publicAllowed, uploadSeconds: (performance.now() - started) / 1000, sourceResult, depthResult, styles: [] };
@@ -45,7 +45,7 @@ try {
         writeFileSync(join(out, `${name}${url.endsWith(".webp") ? ".webp" : ".png"}`), await asset.body());
       }
       await page.getByRole("button", { name: "View before", exact: true }).click();
-      await page.locator(".photo-stage.spatial-ready").waitFor();
+      await page.locator(".spatial-canvas canvas").waitFor();
       await page.waitForTimeout(300);
       await page.locator(".photo-stage").screenshot({ path: join(out, "preview-before.png") });
       await page.getByRole("button", { name: "View after", exact: true }).click();

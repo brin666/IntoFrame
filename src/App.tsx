@@ -1,6 +1,7 @@
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -72,7 +73,8 @@ function App() {
   const [depthResult, setDepthResult] = useState<DepthResult | null>(null);
   const [depthStage, setDepthStage] = useState("queued");
   const [depthError, setDepthError] = useState("");
-  const [spatialReady, setSpatialReady] = useState(false);
+  const [readyDepth, setReadyDepth] = useState<DepthResult | null>(null);
+  const [spatialError, setSpatialError] = useState("");
   const [holding, setHolding] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -91,6 +93,7 @@ function App() {
   const [exportError, setExportError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const photoStageRef = useRef<HTMLDivElement>(null);
+  const heldPointerRef = useRef<number | null>(null);
   const requestRef = useRef(0);
   const generationRequestRef = useRef(0);
 
@@ -108,7 +111,7 @@ function App() {
     setDepthResult(null);
     setDepthError("");
     setDepthStage("queued");
-    setSpatialReady(false);
+    setReadyDepth(null);
     async function processDepth() {
       try {
         await createDepth(result!.id);
@@ -156,7 +159,7 @@ function App() {
     setResult(null);
     setDepthResult(null);
     setDepthError("");
-    setSpatialReady(false);
+    setReadyDepth(null);
     setStyles({});
     setSelectedStyle("dreamy-pink");
     setShowBefore(false);
@@ -250,24 +253,44 @@ function App() {
     }
   }
 
+  const stopHold = useCallback(() => {
+    const pointerId = heldPointerRef.current;
+    heldPointerRef.current = null;
+    if (pointerId !== null && photoStageRef.current?.hasPointerCapture(pointerId)) {
+      photoStageRef.current.releasePointerCapture(pointerId);
+    }
+    setHolding(false);
+  }, []);
+
   function startHold(event: PointerEvent<HTMLDivElement>) {
-    if (!spatialReady || showMask || prefersReducedMotion) return;
+    if (!canHold || !event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    heldPointerRef.current = event.pointerId;
     event.currentTarget.setPointerCapture(event.pointerId);
     setHolding(true);
   }
 
   function endHold(event: PointerEvent<HTMLDivElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setHolding(false);
+    if (event.pointerId === heldPointerRef.current) stopHold();
+  }
+
+  function moveHold(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerId !== heldPointerRef.current) return;
+    // Captured pointers keep delivering moves after leaving the photo.
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right ||
+        event.clientY < bounds.top || event.clientY > bounds.bottom) stopHold();
   }
 
   useEffect(() => {
-    const settle = () => setHolding(false);
-    window.addEventListener("blur", settle);
-    return () => window.removeEventListener("blur", settle);
-  }, []);
+    const hide = () => { if (document.hidden) stopHold(); };
+    window.addEventListener("blur", stopHold);
+    document.addEventListener("visibilitychange", hide);
+    return () => {
+      window.removeEventListener("blur", stopHold);
+      document.removeEventListener("visibilitychange", hide);
+    };
+  }, [stopHold]);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -329,13 +352,23 @@ function App() {
       : depthResult,
     [depthResult, showingStyled, styledResult],
   );
+  // Readiness belongs to this exact scene, never to a previous texture.
+  const spatialReady = visibleDepth !== null && readyDepth === visibleDepth;
   const visibleBackgroundUrl = showingStyled && styledResult
     ? (depthResult ? styledResult.renderBackgroundUrl : styledResult.backgroundUrl)
     : (depthResult?.backgroundUrl || result?.sourceUrl || "");
+  const canHold = showingStyled && spatialReady && !generating && !showMask &&
+    !prefersReducedMotion;
 
   useEffect(() => {
-    if (visibleDepth) setSpatialReady(false);
-  }, [visibleDepth]);
+    setReadyDepth(null);
+    setSpatialError("");
+    stopHold();
+  }, [visibleDepth, stopHold]);
+
+  useEffect(() => {
+    if (!canHold) stopHold();
+  }, [canHold, stopHold]);
 
   async function downloadPng() {
     if (!result || !styledResult) return;
@@ -409,15 +442,17 @@ function App() {
             }}
           >
             <div
-              className={`photo-stage ${spatialReady && !prefersReducedMotion ? "spatial-ready" : ""} ${holding ? "is-awake" : ""}`}
+              className={`photo-stage ${canHold ? "spatial-ready" : ""} ${holding && canHold ? "is-awake" : ""}`}
               style={previewStyle}
               ref={photoStageRef}
               onPointerDown={startHold}
               onPointerUp={endHold}
               onPointerCancel={endHold}
-              onLostPointerCapture={() => setHolding(false)}
+              onPointerMove={moveHold}
+              onPointerLeave={stopHold}
+              onLostPointerCapture={endHold}
               aria-label={
-                spatialReady && !prefersReducedMotion
+                canHold
                   ? "Interactive spatial photo. Hold to animate."
                   : "Cinematic photo preview"
               }
@@ -436,12 +471,14 @@ function App() {
                         depth={visibleDepth}
                         backgroundMode={showingStyled ? "sky-plane" : "photo-depth"}
                         stage={photoStageRef}
-                        active={holding}
-                        travelScale={touchesImageEdge ? 0.45 : 1}
-                        onReady={() => setSpatialReady(true)}
+                        active={holding && canHold}
+                        // A complete generated sky has no hidden subject hole.
+                        // Keep the old edge limit only for the original filled photo.
+                        travelScale={showingStyled ? 1 : touchesImageEdge ? 0.45 : 1}
+                        onReady={(renderedDepth) => { setReadyDepth(renderedDepth); setSpatialError(""); }}
                         onUnavailable={(message) => {
-                          setDepthError(message);
-                          setSpatialReady(false);
+                          setSpatialError(message);
+                          setReadyDepth(null);
                         }}
                       />
                     </Suspense>
@@ -570,12 +607,14 @@ function App() {
             </section>
           )}
           <p className="phase-note" role="status">
-            {depthError
-              ? `Static preview available. Spatial analysis: ${depthError}`
+            {depthError || spatialError
+              ? `Static preview available. Spatial analysis: ${depthError || spatialError}`
               : spatialReady
                 ? prefersReducedMotion
                   ? "Spatial preview ready · Motion is reduced in your system settings."
-                  : "HOLD TO LIVE · Press and hold the photo; release to settle."
+                  : showingStyled && !generating && !showMask
+                    ? "HOLD TO LIVE · Press and hold the photo; release to settle."
+                    : "Still preview · Generate a background and view After to hold to live."
                 : `Static preview ready · Preparing spatial depth (${depthStage}).`}
           </p>
         </main>

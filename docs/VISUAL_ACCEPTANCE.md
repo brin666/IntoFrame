@@ -84,6 +84,8 @@ Per input/style, ignored `screenshots/acceptance/after/` contains:
 
 ## Regression evidence
 
+The original checks below describe the 2026-10-10 checkpoint. The current main interaction contract is **generated After only**; see the [2026-10-11 hold regression](PARALLAX_REGRESSION.md) for restored parallax, static Before, cancellation and PNG invariants.
+
 Build (TypeScript + Vite), 3 restyle task scheduling/retry tests, and 4 compositing invariant tests passed. Three-category depth tests passed at source/render dimensions. Browser upload/zoom/mask tests, Before/After, real generation/PNG download, sky-plane selection and recovered foreground selection passed. Transport failure is injected only for frontend retry testing; subsequent success uses the real model, not a substituted image. GPU failures are not artificially induced.
 
 Original spatial regression passed: camera moves on hold, settles to 0, foreground is above the bars, mobile touch works with zero horizontal overflow, and reduced-motion movement remains negligible. Headless Chrome measured 240 **animation callbacks/s**, p95 interval 4.3 ms. This is not display FPS. Three.js still produces a >500 kB chunk warning.

@@ -62,8 +62,48 @@ try {
   ]);
   const output = resolve("screenshots/restyle-sample-export.png");
   await download.saveAs(output);
+  // Switch styles while holding: the old camera must not leak into a new result.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: "Golden Hour", exact: false }).evaluate(button => button.click());
+  // Check cancellation while the pointer is still pressed; pointer-up cannot mask a bug.
+  await page.waitForFunction(() => {
+    const stage = document.querySelector(".photo-stage");
+    return !stage.classList.contains("is-awake") && Math.abs(Number(stage.dataset.cameraX || 0)) < .002;
+  });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Generate background", exact: true }).click();
+  await page.locator(".photo-stage.spatial-ready").waitFor({ timeout: 120000 });
+  await page.waitForFunction(() => document.querySelector(".spatial-canvas canvas")?.dataset.backgroundUrl?.includes("/styles/golden-hour/") && document.querySelector(".spatial-canvas canvas")?.style.visibility === "visible");
+  if (!(await page.locator(".background-layer img").getAttribute("src"))?.includes("/styles/golden-hour/"))
+    throw new Error("Golden Hour was not attached to the spatial scene.");
+
+  // A failed generated texture is a render failure, not a permanent depth failure.
+  // Fail only image transport; Night still comes from the real local AI model.
+  const brokenTexture = "**/styles/cinematic-night/render-background.webp";
+  await page.route(brokenTexture, route => route.fulfill({ status: 503, body: "Temporary texture failure" }));
+  await page.getByRole("button", { name: "Cinematic Night", exact: false }).click();
+  await page.getByRole("button", { name: "Generate background", exact: true }).click();
+  await page.getByText("Could not load spatial asset:", { exact: false }).waitFor({ timeout: 120000 });
+  if (await stage.getAttribute("class").then(value => value.includes("spatial-ready")))
+    throw new Error("Failed scene remained interactive.");
+  await page.unroute(brokenTexture);
+  await page.getByRole("button", { name: "View before", exact: true }).click();
+  await page.locator(".spatial-canvas canvas").waitFor();
+  await page.getByRole("button", { name: "View after", exact: true }).click();
+  await page.locator(".photo-stage.spatial-ready").waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => document.querySelector(".spatial-canvas canvas")?.dataset.backgroundUrl?.includes("/styles/cinematic-night/") && document.querySelector(".spatial-canvas canvas")?.style.visibility === "visible");
+  if (!(await page.locator(".background-layer img").getAttribute("src"))?.includes("/styles/cinematic-night/"))
+    throw new Error("Night render did not recover after a transient asset failure.");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(1000);
+  if (Math.abs(Number(await stage.getAttribute("data-camera-x"))) < 0.001)
+    throw new Error("Recovered Night scene did not animate.");
+  await page.mouse.up();
   if (errors.length) throw new Error(`Browser errors: ${errors.join("; ")}`);
-  console.log(`Photo: transport failure/retry, real generated style, before/after, sky plane, camera sway/settle, PNG export OK. cameraX=${cameraX.toFixed(5)}`);
+  console.log(`Photo: real generation in all three styles, transport retry, before/after, sky plane, hold/settle, style-switch cancellation, texture failure recovery, PNG export OK. cameraX=${cameraX.toFixed(5)}`);
   console.log(output);
 } finally {
   await browser.close();

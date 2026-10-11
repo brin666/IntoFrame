@@ -14,7 +14,7 @@ An isolated [Subject Depth Mesh experiment](SUBJECT_DEPTH_EXPERIMENT.md) is avai
 - Adjust framing zoom, inspect the generated mask, retry with another photo.
 - Report model and image failures without showing a fabricated result.
 - After the static preview appears, estimate relative depth once with Depth Anything V2 Small, fill the primary subject's hidden background conservatively, and render a padded depth mesh in Three.js.
-- Hold the photo with a mouse or finger to wake a small camera sway; release to settle. The transparent subject remains above the film bars. Reduced-motion preference leaves the photo still.
+- Hold the generated **After** photo with a mouse or finger to wake a small camera sway; release or move outside to settle. Before, mask inspection and generation stay still. The transparent subject remains above the film bars. Reduced-motion preference leaves the photo still.
 - Choose Dreamy Pink, Golden Hour, or Cinematic Night. A local Stable Diffusion inpainting checkpoint generates a new sky field. The full-resolution original subject is restored using the BiRefNet alpha mask; no paid image API is called.
 - Compare Before/After, watch generation status, and download a full-resolution PNG with the visible film bars and pop-out subject.
 
@@ -68,6 +68,8 @@ Source RGB and all styled background assets are saved losslessly. A bounded colo
 
 Original-photo motion uses the existing filled photo-depth mesh. Generated backgrounds use a distant plane with the **same perspective camera** and bounded hold/release motion; they do not inherit roads, room surfaces or buildings from the replaced scene's depth. Subject plane depth still comes from the original subject. No AI runs per frame.
 
+The main preview enables hold only after the generated scene's own texture is ready. The original photo-depth implementation remains available, while Before is a still comparison. Full generated skies use the existing overscan camera bound without the original photo's mask-edge travel penalty. Render asset errors are separate from depth inference errors, so switching Before/After can retry a failed texture. See the [hold-parallax regression report](docs/PARALLAX_REGRESSION.md).
+
 The browser PNG exporter uses the current zoom and composition offsets, clips the generated background to the middle 74%, draws equal top and bottom bars from the **same 13% parameter used by the DOM**, then draws the recovered transparent subject over them. It exports the **centered, still AI result** at the processed source resolution. Camera animation is not encoded. Download is disabled while inspecting Before or the mask to avoid confusing those views with the exported result. Browser and PNG have matching composition, with different raster sampling at fractional CSS sizes; pixel identity with a scaled screenshot is not claimed.
 
 Completed restyle responses also include `subjectUrl`, `backgroundGeometry: "sky-plane"`, and metrics for seed, pinned model revision, prompts, steps, guidance, loading and inference seconds, and edge processing. The same metadata are stored next to the local output as `metadata.json`.
@@ -110,7 +112,9 @@ node scripts\restyle-browser-smoke.mjs
 npm.cmd run build
 ```
 
-The scripts use scikit-image's `astronaut` (person), `chelsea` (cat), and `coffee` (object) sample images. Run the data smoke script first to create their source files. For the single-origin build, set `$env:INTOFRAME_URL='http://127.0.0.1:5190'` and `$env:INTOFRAME_API_URL='http://127.0.0.1:5190'`. Set `INTOFRAME_TEST_PHOTO` to a local photo path for the restyle test. Browser scripts require Google Chrome installed. The restyle test injects one HTTP transport failure, then retries through the real AI pipeline; model failure scheduling is separately unit-tested. It checks Before/After, generated-sky plane selection, recovered subject layer, hold/settle and PNG download. Spatial regression checks mobile touch, reduced motion and layer order. Measured 240 animation callbacks/s and a 4.3 ms p95 interval in headless Chrome are **callback timing, not display FPS**.
+The upload/depth scripts use scikit-image's `astronaut` (person), `chelsea` (cat), and `coffee` (object) sample images. Run the data smoke script first to create their source files. For the single-origin build, set `$env:INTOFRAME_URL='http://127.0.0.1:5190'` and `$env:INTOFRAME_API_URL='http://127.0.0.1:5190'`. Browser scripts require Google Chrome installed. The restyle test performs real generation in all three styles, injects transport failures to check retry and texture recovery, and checks Before/After and PNG download. Model failure scheduling is separately unit-tested.
+
+`spatial-browser-smoke.mjs` runs `parallax-browser-smoke.mjs`: real person generation on desktop and emulated mobile, projected subject-to-sky separation, release/cancel/leave/blur, static Before, reduced motion and identical PNG bytes during hold. Set `INTOFRAME_TEST_PHOTO` to your local building photo to add the Big Ben case to this gate (also usable by the restyle test). Evidence stays in ignored `screenshots/parallax/regression/`. The old pre-generation pet/object hold contract is replaced by generated-After acceptance; three-category upload/depth checks remain separate. Measured 240 animation callbacks/s and a 4.3 ms p95 interval in headless Chrome are **callback timing, not display FPS**.
 
 For reproducible visual evidence, use the [acceptance procedure](docs/VISUAL_ACCEPTANCE.md). Original images, backgrounds, raw composites, exports, browser screenshots and enlarged edge comparisons are saved under ignored `screenshots/acceptance/`. Visual judgments are recorded separately from automated functional checks.
 

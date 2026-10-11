@@ -89,7 +89,7 @@ def _process(job_id: str, image: Image.Image) -> dict:
     foreground.save(folder / "subject.png")
     jobs[job_id]["stage"] = "checking-sky"
     try:
-        editable_sky, sky = detect_sky(image, mask)
+        editable_sky, sky = detect_sky(image, mask, diagnostics_dir=folder)
     except RuntimeError:
         editable_sky = Image.new("L", image.size, 0)
         sky = {"eligible": False, "status": "unavailable", "skyFraction": 0,
@@ -193,6 +193,7 @@ def _process_restyle(job_id: str, style: str) -> dict:
         "renderSceneUrl": f"{root_url}/render-scene.png",
         "editableSkyUrl": f"/media/{job_id}/editable-sky.png",
         "backgroundGeometry": "sky-layers",
+        "compositingVersion": "native-sky-boundary-v2",
         "model": RESTYLE_MODEL_ID,
         "metrics": {**metrics, **edge_metrics},
     }

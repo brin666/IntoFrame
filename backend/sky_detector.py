@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 import math
+from pathlib import Path
 
 import cv2
 import numpy as np
 from PIL import Image
+from sky_refinement import refine_sky_boundary
 
 MODEL_ID = "nvidia/segformer-b0-finetuned-ade-512-512"
 MODEL_REVISION = "489d5cd81a0b59fab9b7ea758d3548ebe99677da"
@@ -168,7 +170,7 @@ def sky_mask_from_logits(
 
 
 def detect_sky(
-    source: Image.Image, subject_mask: Image.Image
+    source: Image.Image, subject_mask: Image.Image, diagnostics_dir: Path | None = None
 ) -> tuple[Image.Image, dict]:
     """Return an L editable-sky mask and suitability, preserving subject alpha.
 
@@ -188,6 +190,16 @@ def detect_sky(
         if prediction.ndim != 4 or prediction.shape[0] != 1:
             raise RuntimeError("Sky detection returned unexpected output dimensions.")
         logits = prediction[0].float().cpu().numpy()
-        return sky_mask_from_logits(logits, subject_mask)
+        editable, suitability = sky_mask_from_logits(logits, subject_mask)
+        if diagnostics_dir is not None:
+            # Retain actual prediction, not a later rerun, for layer diagnosis.
+            diagnostics_dir.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(diagnostics_dir / "sky-semantic.npz", logits=logits)
+            editable.save(diagnostics_dir / "editable-sky-coarse.png")
+        if suitability["eligible"]:
+            editable, refinement = refine_sky_boundary(source, subject_mask, editable, logits)
+            suitability["boundaryRefinement"] = refinement
+            suitability["skyFraction"] = float((np.asarray(editable) > 0).mean())
+        return editable, suitability
     except Exception as error:
         raise RuntimeError("Semantic sky detection is unavailable for this photo.") from error

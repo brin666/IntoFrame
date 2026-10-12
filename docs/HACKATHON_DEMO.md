@@ -49,6 +49,8 @@ Current render and browser results are recorded in [render metadata](demo/render
 
 The final local frontend passed 66 checks: all four native depth meshes, twelve matching style layers, untouched Before, transition replay/skip, centered PNG byte identity during the reveal, trusted drag/release within source-cut travel caps, zero sample inference requests, the 150-second Player timeline and six chapter seeks, served MP4 hash equality and the preserved experiment HTML. Focused computation checks passed: scene motion 14, depth geometry 9, compositing 6 and native depth contract 5, plus the reveal endpoint/group-fade checks. The encoded movie is H.264, 1920 × 1080, 30 fps, exactly 4,500 frames / 150 seconds; its size and hash are in the render record. These checks do not assert universal visual quality or physical phone/display FPS.
 
+A fresh detached worktree of `0ef8bbb8b54ee20da7244c3c75736f3981bb3362`, without the local Python environment or model cache, passed `npm ci`, `npm run build`, the unchanged asset inventory check and the same 66 browser checks on a frontend-only Vite preview at port 5198. No sample/API requests were made. See [clean-checkout results](demo/clean-checkout-browser.json). The remote commit's MP4 was downloaded back from GitHub and matched the local 10,633,772-byte file and SHA256 `917275a5e60480971237289268fd02588337b9dc0bdb6cbef4ea98b174cd1143`.
+
 ## Verification and reproduction
 
 The current browser report and render metadata linked above identify the actual checks and output. Build/resource checks are separate from the visual review: Taipei Golden Hour and the rejected candidate photos are not visual passes.

@@ -2,7 +2,7 @@
   "base": "http://127.0.0.1:5198",
   "checks": [
     {
-      "name": "Gallery contains four actual sample photos",
+      "name": "Gallery contains the accepted building examples",
       "passed": true
     },
     {
@@ -50,151 +50,187 @@
       "passed": true
     },
     {
+      "name": "tower: source-cut travel limits remain respected",
+      "passed": true,
+      "evidence": {
+        "camera": -0.02534,
+        "leftTravel": 0.02825,
+        "rightTravel": 0.02825
+      }
+    },
+    {
       "name": "tower: release resumes bounded drift",
       "passed": true
     },
     {
-      "name": "portrait: native depth mesh ready",
+      "name": "taipei: native depth mesh ready",
       "passed": true
     },
     {
-      "name": "portrait: Before uses original subject",
+      "name": "taipei: Before uses original subject",
       "passed": true
     },
     {
-      "name": "portrait/dreamy-pink: matching packaged subject",
+      "name": "taipei/dreamy-pink: matching packaged subject",
       "passed": true
     },
     {
-      "name": "portrait/dreamy-pink: separate generated-sky scene",
+      "name": "taipei/dreamy-pink: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "portrait/golden-hour: matching packaged subject",
+      "name": "taipei/golden-hour: matching packaged subject",
       "passed": true
     },
     {
-      "name": "portrait/golden-hour: separate generated-sky scene",
+      "name": "taipei/golden-hour: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "portrait/cinematic-night: matching packaged subject",
+      "name": "taipei/cinematic-night: matching packaged subject",
       "passed": true
     },
     {
-      "name": "portrait/cinematic-night: separate generated-sky scene",
+      "name": "taipei/cinematic-night: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "portrait: six-second reveal can replay",
+      "name": "taipei: six-second reveal can replay",
       "passed": true
     },
     {
-      "name": "portrait: reveal does not contaminate PNG",
+      "name": "taipei: reveal does not contaminate PNG",
       "passed": true
     },
     {
-      "name": "portrait: real drag controls virtual camera",
+      "name": "taipei: real drag controls virtual camera",
       "passed": true
     },
     {
-      "name": "portrait: release resumes bounded drift",
+      "name": "taipei: source-cut travel limits remain respected",
+      "passed": true,
+      "evidence": {
+        "camera": 0.02455,
+        "leftTravel": 0,
+        "rightTravel": 0.02735
+      }
+    },
+    {
+      "name": "taipei: release resumes bounded drift",
       "passed": true
     },
     {
-      "name": "dog: native depth mesh ready",
+      "name": "flatiron: native depth mesh ready",
       "passed": true
     },
     {
-      "name": "dog: Before uses original subject",
+      "name": "flatiron: Before uses original subject",
       "passed": true
     },
     {
-      "name": "dog/dreamy-pink: matching packaged subject",
+      "name": "flatiron/dreamy-pink: matching packaged subject",
       "passed": true
     },
     {
-      "name": "dog/dreamy-pink: separate generated-sky scene",
+      "name": "flatiron/dreamy-pink: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "dog/golden-hour: matching packaged subject",
+      "name": "flatiron/golden-hour: matching packaged subject",
       "passed": true
     },
     {
-      "name": "dog/golden-hour: separate generated-sky scene",
+      "name": "flatiron/golden-hour: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "dog/cinematic-night: matching packaged subject",
+      "name": "flatiron/cinematic-night: matching packaged subject",
       "passed": true
     },
     {
-      "name": "dog/cinematic-night: separate generated-sky scene",
+      "name": "flatiron/cinematic-night: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "dog: six-second reveal can replay",
+      "name": "flatiron: six-second reveal can replay",
       "passed": true
     },
     {
-      "name": "dog: reveal does not contaminate PNG",
+      "name": "flatiron: reveal does not contaminate PNG",
       "passed": true
     },
     {
-      "name": "dog: real drag controls virtual camera",
+      "name": "flatiron: real drag controls virtual camera",
       "passed": true
     },
     {
-      "name": "dog: release resumes bounded drift",
+      "name": "flatiron: source-cut travel limits remain respected",
+      "passed": true,
+      "evidence": {
+        "camera": -0.03506,
+        "leftTravel": 0.03909,
+        "rightTravel": 0.03909
+      }
+    },
+    {
+      "name": "flatiron: release resumes bounded drift",
       "passed": true
     },
     {
-      "name": "rocket: native depth mesh ready",
+      "name": "qutub: native depth mesh ready",
       "passed": true
     },
     {
-      "name": "rocket: Before uses original subject",
+      "name": "qutub: Before uses original subject",
       "passed": true
     },
     {
-      "name": "rocket/dreamy-pink: matching packaged subject",
+      "name": "qutub/dreamy-pink: matching packaged subject",
       "passed": true
     },
     {
-      "name": "rocket/dreamy-pink: separate generated-sky scene",
+      "name": "qutub/dreamy-pink: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "rocket/golden-hour: matching packaged subject",
+      "name": "qutub/golden-hour: matching packaged subject",
       "passed": true
     },
     {
-      "name": "rocket/golden-hour: separate generated-sky scene",
+      "name": "qutub/golden-hour: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "rocket/cinematic-night: matching packaged subject",
+      "name": "qutub/cinematic-night: matching packaged subject",
       "passed": true
     },
     {
-      "name": "rocket/cinematic-night: separate generated-sky scene",
+      "name": "qutub/cinematic-night: separate generated-sky scene",
       "passed": true
     },
     {
-      "name": "rocket: six-second reveal can replay",
+      "name": "qutub: six-second reveal can replay",
       "passed": true
     },
     {
-      "name": "rocket: reveal does not contaminate PNG",
+      "name": "qutub: reveal does not contaminate PNG",
       "passed": true
     },
     {
-      "name": "rocket: real drag controls virtual camera",
+      "name": "qutub: real drag controls virtual camera",
       "passed": true
     },
     {
-      "name": "rocket: release resumes bounded drift",
+      "name": "qutub: source-cut travel limits remain respected",
+      "passed": true,
+      "evidence": {
+        "camera": -0.02821,
+        "leftTravel": 0.03144,
+        "rightTravel": 0.03144
+      }
+    },
+    {
+      "name": "qutub: release resumes bounded drift",
       "passed": true
     },
     {
@@ -204,6 +240,34 @@
     },
     {
       "name": "Remotion film plays and pauses",
+      "passed": true
+    },
+    {
+      "name": "Film timeline is exactly 150 seconds",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 600 renders",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 1320 renders",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 2340 renders",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 3300 renders",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 3660 renders",
+      "passed": true
+    },
+    {
+      "name": "Film chapter at frame 4200 renders",
       "passed": true
     },
     {

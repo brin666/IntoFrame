@@ -34,8 +34,30 @@ export interface DepthResult {
   backgroundUrl: string;
   renderSkyUrl?: string;
   renderSceneUrl?: string;
+  /** Native prediction, kept at float precision for local subject geometry. */
+  meshDepthUrl?: string;
+  meshDepthMetadata?: MeshDepthMetadata;
+  meshDepthDiagnostics?: {
+    status: "ready" | "flat-subject-range" | "weak-subject-range" | "no-opaque-subject";
+    eligible: boolean;
+    subjectRangeRatio?: number;
+    reason: string | null;
+  };
   model: string;
   backgroundMethod: string;
+}
+
+export interface MeshDepthMetadata {
+  width: number;
+  height: number;
+  encoding: "float32-little-endian-row-major";
+  subjectP05: number;
+  subjectP95: number;
+  subjectMedian: number;
+  globalP02: number;
+  globalP98: number;
+  globalMin: number;
+  globalMax: number;
 }
 
 export interface DepthJob {
@@ -46,10 +68,12 @@ export interface DepthJob {
 }
 
 export type StyleId = "dreamy-pink" | "golden-hour" | "cinematic-night";
+export const CURRENT_ATMOSPHERE_VERSION = "sky-scene-ambience-v2";
 
 export interface RestyleResult {
   jobId: string;
   style: StyleId;
+  atmosphereVersion?: string;
   backgroundUrl: string;
   renderBackgroundUrl: string;
   compositeUrl: string;

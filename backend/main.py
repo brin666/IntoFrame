@@ -16,13 +16,17 @@ from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel
 
-from depth_estimator import MODEL_ID as DEPTH_MODEL_ID, estimate, prepare_render_assets
+from depth_estimator import (
+    MODEL_ID as DEPTH_MODEL_ID, estimate_with_raw, prepare_render_assets,
+    subject_depth_metadata,
+)
 from depth_estimator import OVERSCAN_FRACTION
 from restyler import MODEL_ID as RESTYLE_MODEL_ID, STYLES, restyle
 from compositing import composite_subject, recover_subject_edges
 from segmenter import MODEL_ID, segment
 from sky_detector import detect_sky, MODEL_ID as SKY_MODEL_ID
 from sky_compositing import build_sky_layers
+from atmosphere import harmonize_layer, ATMOSPHERE_VERSION, LAYER_HARMONIZATION_VERSION, STYLE_GRADING
 
 BASE = Path(__file__).resolve().parent
 DATA = BASE / "data"
@@ -145,7 +149,9 @@ class RestyleRequest(BaseModel):
 
 def _process_restyle(job_id: str, style: str) -> dict:
     folder = DATA / job_id
-    target = folder / "styles" / style
+    # Keep previous generated images intact and give the new palette distinct
+    # URLs so browser textures and cached PNG layers cannot mix revisions.
+    target = folder / "styles" / style / ATMOSPHERE_VERSION
     target.mkdir(parents=True, exist_ok=True)
     with Image.open(folder / "source.webp") as source_file:
         source = source_file.convert("RGB")
@@ -156,10 +162,13 @@ def _process_restyle(job_id: str, style: str) -> dict:
     if not editable_sky.getbbox():
         raise ValueError("No editable sky was detected. Choose an outdoor photo with visible sky.")
     restyle_jobs[(job_id, style)]["stage"] = "generating"
-    generated_sky, _, metrics = restyle(source, mask, style)
-    background, preserved_scene, sky_underlay = build_sky_layers(source, mask, editable_sky, generated_sky)
+    generated_sky, _, metrics = restyle(source, mask, style, artifact_dir=target)
+    _, preserved_scene, sky_underlay = build_sky_layers(source, mask, editable_sky, generated_sky)
+    preserved_scene = harmonize_layer(preserved_scene, style)
+    background = Image.alpha_composite(generated_sky.convert("RGBA"), preserved_scene).convert("RGB")
     restyle_jobs[(job_id, style)]["stage"] = "compositing"
     subject, edge_metrics = recover_subject_edges(source, mask, sky_underlay)
+    subject = harmonize_layer(subject, style)
     composite = composite_subject(subject, background)
     # Preview, padded texture, composite and export must share identical RGB.
     background.save(target / "background.webp", "WEBP", lossless=True, method=4)
@@ -181,7 +190,7 @@ def _process_restyle(job_id: str, style: str) -> dict:
         else:
             output.save(target / name, "PNG", optimize=True)
     sky_underlay.save(target / "sky-underlay.png")
-    root_url = f"/media/{job_id}/styles/{style}"
+    root_url = f"/media/{job_id}/styles/{style}/{ATMOSPHERE_VERSION}"
     result = {
         "jobId": job_id,
         "style": style,
@@ -194,8 +203,10 @@ def _process_restyle(job_id: str, style: str) -> dict:
         "editableSkyUrl": f"/media/{job_id}/editable-sky.png",
         "backgroundGeometry": "sky-layers",
         "compositingVersion": "native-sky-boundary-v2",
+        "atmosphereVersion": ATMOSPHERE_VERSION,
         "model": RESTYLE_MODEL_ID,
-        "metrics": {**metrics, **edge_metrics},
+        "metrics": {**metrics, **edge_metrics, "sceneColorTreatment": STYLE_GRADING[style]["scene"],
+                    "layerHarmonizationVersion": LAYER_HARMONIZATION_VERSION if style != "golden-hour" else "unchanged"},
     }
     (target / "metadata.json").write_text(json.dumps(result, indent=2), encoding="utf8")
     return result
@@ -221,13 +232,14 @@ def _process_depth(job_id: str) -> dict:
     with Image.open(folder / "mask.png") as mask_file:
         mask = mask_file.convert("L")
     depth_jobs[job_id]["stage"] = "estimating"
-    depth = estimate(source)
+    depth, raw_depth = estimate_with_raw(source)
+    mesh_metadata, mesh_diagnostics = subject_depth_metadata(raw_depth, mask)
     depth_jobs[job_id]["stage"] = "filling"
     background, render_depth, foreground_depth, padding = prepare_render_assets(source, mask, depth)
     depth.save(folder / "depth.png")
     render_depth.save(folder / "render-depth.png")
     background.save(folder / "background.webp", "WEBP", quality=91, method=4)
-    return {
+    result = {
         "jobId": job_id,
         "width": source.width,
         "height": source.height,
@@ -241,7 +253,19 @@ def _process_depth(job_id: str) -> dict:
         "backgroundUrl": f"/media/{job_id}/background.webp",
         "model": DEPTH_MODEL_ID,
         "backgroundMethod": "OpenCV Telea local inpaint",
+        "meshDepthDiagnostics": mesh_diagnostics,
     }
+    if mesh_metadata is not None:
+        # Explicit byte order and C layout are independent of the server host.
+        (folder / "subject-depth-f32.bin").write_bytes(
+            raw_depth.astype("<f4", copy=False).tobytes(order="C")
+        )
+        (folder / "subject-depth.json").write_text(
+            json.dumps(mesh_metadata, indent=2, allow_nan=False) + "\n", encoding="utf8"
+        )
+        result["meshDepthUrl"] = f"/media/{job_id}/subject-depth-f32.bin"
+        result["meshDepthMetadata"] = mesh_metadata
+    return result
 
 
 async def _run_depth(job_id: str) -> None:
@@ -330,7 +354,9 @@ async def create_restyle(request: RestyleRequest):
     if not sky.get("eligible"):
         raise HTTPException(422, sky.get("reason") or "No editable sky detected. Upload an outdoor photo with visible sky.")
     key = (request.jobId, request.style)
-    if key not in restyle_jobs or restyle_jobs[key]["status"] == "failed":
+    cached = restyle_jobs.get(key)
+    outdated = cached and cached["status"] == "complete" and cached.get("result", {}).get("atmosphereVersion") != ATMOSPHERE_VERSION
+    if key not in restyle_jobs or restyle_jobs[key]["status"] == "failed" or outdated:
         restyle_jobs[key] = {"status": "processing", "stage": "queued"}
         asyncio.create_task(_run_restyle(*key))
     return {"id": request.jobId, "style": request.style, "status": restyle_jobs[key]["status"]}

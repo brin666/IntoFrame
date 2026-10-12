@@ -26,6 +26,7 @@ Checked against installed package metadata and bundled notices during local acce
 | React, React DOM, Three.js, Vite, TypeScript, React/Three type declarations | MIT |
 | Lucide React | ISC |
 | Playwright | Apache 2.0 |
+| `remotion`, `@remotion/player`, `@remotion/cli`, `@remotion/bundler`, `@remotion/renderer` 4.0.534 | [Remotion License at the pinned release](https://raw.githubusercontent.com/remotion-dev/remotion/v4.0.534/LICENSE.md). Free License / Company License eligibility, not MIT. Individuals and qualifying small organizations/evaluation uses are covered by its stated free terms; other entities need the appropriate license. Used for browser playback and the standalone submission MP4. Rendering binaries/browser retain their bundled notices; they are installed as dependencies, not committed into this repository. |
 | FastAPI, einops | MIT |
 | Pillow 12.3 | MIT-CMU |
 | uvicorn, NumPy, SciPy | BSD-3-Clause; NumPy/SciPy bundled numerical components have additional notices. |

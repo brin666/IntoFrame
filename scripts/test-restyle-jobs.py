@@ -53,12 +53,20 @@ class RestyleSchedulingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.started, [self.key])
 
     async def test_complete_job_reuses_result(self):
-        cached = {"status": "complete", "backgroundUrl": "/media/saved.png"}
+        cached = {"status": "complete", "result": {"backgroundUrl": "/media/saved.png",
+                                                   "atmosphereVersion": main.ATMOSPHERE_VERSION}}
         main.restyle_jobs[self.key] = cached
         result = await self.submit()
         self.assertEqual(result["status"], "complete")
         self.assertEqual(self.started, [])
         self.assertIs(main.restyle_jobs[self.key], cached)
+
+    async def test_old_palette_is_regenerated_without_reusing_its_result(self):
+        main.restyle_jobs[self.key] = {"status": "complete", "result": {"backgroundUrl": "/media/old.png"}}
+        result = await self.submit()
+        self.assertEqual(result["status"], "processing")
+        self.assertEqual(self.started, [self.key])
+        self.assertNotIn("result", main.restyle_jobs[self.key])
 
     async def test_no_sky_returns_422_without_creating_a_task(self):
         reason = "No sufficiently clear sky was detected. Choose an outdoor photo with visible sky."

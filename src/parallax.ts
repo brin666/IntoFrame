@@ -29,6 +29,11 @@ export interface ParallaxOptions {
   travelScale: number;
   /** The generated sky uses SKY_Z; the original photo can use zero. */
   backgroundZ?: number;
+  /** Representative and nearest z of the geometry actually being rendered. */
+  subjectReferenceZ?: number;
+  nearestZ?: number;
+  /** Maximum forward camera movement; safety uses its closest position. */
+  cameraAdvance?: number;
 }
 
 export interface ParallaxTravel {
@@ -90,8 +95,11 @@ export function calculateParallax(options: ParallaxOptions): ParallaxTravel {
   const targetGap =
     clamp(baseGap * occupancyFactor, minimumGap, maximumGap) * travelScale;
   const focalPixels = height / (2 * Math.tan((FOV * Math.PI) / 360));
-  const foregroundZ = subjectZ(options.foregroundDepth);
-  const foregroundDistance = CAMERA_DISTANCE - foregroundZ;
+  const foregroundZ = clamp(finite(options.subjectReferenceZ ?? subjectZ(options.foregroundDepth),
+    subjectZ(options.foregroundDepth)), 0, CAMERA_DISTANCE - 0.2);
+  const cameraAdvance = clamp(finite(options.cameraAdvance ?? 0, 0), 0, 0.1);
+  const cameraDistance = CAMERA_DISTANCE - cameraAdvance;
+  const foregroundDistance = cameraDistance - foregroundZ;
   const backgroundZ = clamp(
     finite(options.backgroundZ ?? SKY_Z, SKY_Z),
     -CAMERA_DISTANCE,
@@ -100,7 +108,7 @@ export function calculateParallax(options: ParallaxOptions): ParallaxTravel {
   const gapPerWorldUnit =
     zoom *
     focalPixels *
-    (1 / foregroundDistance - 1 / (CAMERA_DISTANCE - backgroundZ));
+    (1 / foregroundDistance - 1 / (cameraDistance - backgroundZ));
   const desiredTravel = gapPerWorldUnit > 0 ? targetGap / gapPerWorldUnit : 0;
 
   const padding =
@@ -109,8 +117,9 @@ export function calculateParallax(options: ParallaxOptions): ParallaxTravel {
       : options.paddingX;
   // Reserve 40% of the padded texture. The nearest layer is the conservative
   // projection for converting that source padding into safe camera movement.
-  const nearDistance =
-    CAMERA_DISTANCE - Math.max(foregroundZ, backgroundZ, DEPTH_SPAN);
+  const nearestZ = clamp(finite(options.nearestZ ?? foregroundZ, foregroundZ),
+    Math.max(foregroundZ, backgroundZ, DEPTH_SPAN), cameraDistance - 0.2);
+  const nearDistance = cameraDistance - nearestZ;
   const paddingLimit = (pixels: number) =>
     (0.6 * width * Math.max(0, finite(pixels, 0)) * nearDistance) /
     (sourceWidth * focalPixels);
@@ -134,7 +143,7 @@ export function calculateParallax(options: ParallaxOptions): ParallaxTravel {
     ? finite(options.subjectStats.rightEdgeFraction, 0) > 0
     : boundRight >= sourceWidth * 0.999;
   const travelForScreenMargin = (pixels: number) =>
-    (Math.max(0, pixels) * foregroundDistance) / (zoom * focalPixels);
+    (Math.max(0, pixels) * nearDistance) / (zoom * focalPixels);
 
   // Negative camera x moves the subject right. A source cut on its left must
   // stay hidden; positive camera x has the corresponding right-edge limit.

@@ -1,6 +1,6 @@
 # Public demonstration assets
 
-Only these reviewed samples and their locally generated derivatives are distributed in `docs/examples/`. User-uploaded building photographs, local screenshots of those photographs, weights, videos, logs and caches are excluded from Git.
+These historical reviewed samples and their locally generated derivatives are distributed in `docs/examples/`. The newer public examples and standalone demo film are separately recorded in [DEMO_ASSETS](DEMO_ASSETS.md) and [DEMO_STORYBOARD](DEMO_STORYBOARD.md). User-uploaded photographs with unverified source rights, their local screenshots, weights, logs and caches are excluded from Git. Only the attributed public-source submission film/recording under `public/demo/` is distributed.
 
 | Asset | Original source / credit | Source status |
 | --- | --- | --- |

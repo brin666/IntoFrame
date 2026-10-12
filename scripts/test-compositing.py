@@ -109,12 +109,13 @@ class CompositingTests(unittest.TestCase):
                 self.assertTrue(result["sky"]["eligible"])
                 with patch.object(main, "restyle", return_value=(sky, sky, {"seed": 5})):
                     styled = main._process_restyle(job_id, style)
-                output = folder / "styles" / style
+                output = folder / "styles" / style / main.ATMOSPHERE_VERSION
                 background = Image.open(output / "background.webp")
                 padded = np.asarray(Image.open(output / "render-background.webp"))
                 bg = np.asarray(background)
                 visible_non_sky = (editable_array == 0) & (np.asarray(mask) == 0)
-                np.testing.assert_array_equal(bg[visible_non_sky], np.asarray(source)[visible_non_sky])
+                balanced_source = np.asarray(main.harmonize_layer(source, style))
+                np.testing.assert_array_equal(bg[visible_non_sky], balanced_source[visible_non_sky])
                 visible_sky = (editable_array == 255) & (np.asarray(mask) == 0)
                 np.testing.assert_array_equal(bg[visible_sky], np.asarray(sky)[visible_sky])
                 np.testing.assert_array_equal(padded[12:52, 12:52], bg)
@@ -122,7 +123,7 @@ class CompositingTests(unittest.TestCase):
                 render_scene = np.asarray(Image.open(output / "render-scene.png"))
                 np.testing.assert_array_equal(render_sky[12:52, 12:52], np.asarray(sky))
                 native_scene = render_scene[12:52, 12:52]
-                np.testing.assert_array_equal(native_scene[visible_non_sky, :3], np.asarray(source)[visible_non_sky])
+                np.testing.assert_array_equal(native_scene[visible_non_sky, :3], balanced_source[visible_non_sky])
                 layered = Image.alpha_composite(Image.fromarray(render_sky).convert("RGBA"), Image.fromarray(render_scene)).convert("RGB")
                 np.testing.assert_array_equal(np.asarray(layered), padded)
                 subject = Image.open(output / "subject.png")
@@ -130,8 +131,9 @@ class CompositingTests(unittest.TestCase):
                 expected = composite_subject(subject, background)
                 np.testing.assert_array_equal(np.asarray(Image.open(output / "composite.png")), np.asarray(expected))
                 self.assertEqual(styled["backgroundGeometry"], "sky-layers")
-                self.assertEqual(styled["renderSkyUrl"], f"/media/{job_id}/styles/{style}/render-sky.webp")
-                self.assertEqual(styled["renderSceneUrl"], f"/media/{job_id}/styles/{style}/render-scene.png")
+                self.assertEqual(styled["atmosphereVersion"], main.ATMOSPHERE_VERSION)
+                self.assertEqual(styled["renderSkyUrl"], f"/media/{job_id}/styles/{style}/{main.ATMOSPHERE_VERSION}/render-sky.webp")
+                self.assertEqual(styled["renderSceneUrl"], f"/media/{job_id}/styles/{style}/{main.ATMOSPHERE_VERSION}/render-scene.png")
                 self.assertEqual(styled["editableSkyUrl"], result["sky"]["maskUrl"])
                 self.assertTrue((output / "metadata.json").is_file())
             finally:

@@ -31,6 +31,7 @@ import {
   getDepth,
   getJob,
   getRestyle,
+  CURRENT_ATMOSPHERE_VERSION,
   type DepthResult,
   type Result,
   type RestyleResult,
@@ -38,16 +39,53 @@ import {
 } from "./api";
 import { exportFrame } from "./exportFrame";
 import { FILM_BAR_FRACTION } from "./frameComposition";
+import { loadDemoSamples, type DemoSample } from "./samples";
+import type { SceneInteraction } from "./sceneMotion";
+import type { PhotoRevealProps } from "./remotion/PhotoReveal";
+const PhotoRevealPlayer = lazy(() =>
+  import("./PhotoRevealPlayer")
+    .then((module) => ({ default: module.PhotoRevealPlayer }))
+    .catch(() => ({ default: RevealLoadFailure })),
+);
+function RevealLoadFailure({ onUnavailable }: { onUnavailable: (message: string) => void }) {
+  useEffect(() => {
+    onUnavailable("Could not load the transition. Your photo preview is still available.");
+  }, [onUnavailable]);
+  return <></>;
+}
 const SpatialFrameScene = lazy(() =>
   import("./SpatialFrameScene").then((module) => ({
     default: module.SpatialFrameScene,
-  })),
+  })).catch(() => ({ default: SpatialLoadFailure })),
 );
+function SpatialLoadFailure({ onUnavailable }: { onUnavailable: (message: string) => void }) {
+  useEffect(() => { onUnavailable("Could not load spatial rendering. Your still preview is available."); }, [onUnavailable]);
+  return <></>;
+}
 
 type Mode = "upload" | "processing" | "preview" | "error";
+interface DragPointer {
+  id: number;
+  startX: number;
+  startY: number;
+  width: number;
+  axis: "pending" | "horizontal";
+}
+interface RevealRequest {
+  token: number;
+  jobId: string;
+  style: StyleId;
+  input: PhotoRevealProps;
+}
 const supported = ["image/jpeg", "image/png", "image/webp"];
 const clamp = (value: number, low: number, high: number) =>
   Math.min(high, Math.max(low, value));
+function clearSampleQuery() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("sample")) return;
+  url.searchParams.delete("sample");
+  window.history.replaceState(null, "", url);
+}
 const stageLabels: Record<string, string> = {
   queued: "Waiting for the image engine",
   preparing: "Preparing your image",
@@ -57,7 +95,7 @@ const stageLabels: Record<string, string> = {
 const styleOptions: { id: StyleId; name: string; detail: string }[] = [
   { id: "dreamy-pink", name: "Dreamy Pink", detail: "Pink, lavender, soft clouds" },
   { id: "golden-hour", name: "Golden Hour", detail: "Warm natural sunset" },
-  { id: "cinematic-night", name: "Cinematic Night", detail: "Deep blue, subtle stars" },
+  { id: "cinematic-night", name: "Cinematic Night", detail: "Blue-hour sky, soft clouds" },
 ];
 const restyleStageLabels: Record<string, string> = {
   queued: "Waiting for the image engine",
@@ -76,8 +114,8 @@ function App() {
   const [depthError, setDepthError] = useState("");
   const [readyDepth, setReadyDepth] = useState<DepthResult | null>(null);
   const [spatialError, setSpatialError] = useState("");
-  const [holding, setHolding] = useState(false);
-  const [touchHold, setTouchHold] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [pageActive, setPageActive] = useState(() => !document.hidden);
   const [motionNotice, setMotionNotice] = useState("");
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -94,11 +132,58 @@ function App() {
   const [generationStage, setGenerationStage] = useState("queued");
   const [generationError, setGenerationError] = useState("");
   const [exportError, setExportError] = useState("");
+  const [reveal, setReveal] = useState<RevealRequest | null>(null);
+  const [revealError, setRevealError] = useState("");
+  const revealTokenRef = useRef(0);
+  const activeRevealTokenRef = useRef<number | null>(null);
+  const compositionRef = useRef({ zoom: 1, shiftX: 0, shiftY: 0, reducedMotion: false });
   const inputRef = useRef<HTMLInputElement>(null);
   const photoStageRef = useRef<HTMLDivElement>(null);
-  const heldPointerRef = useRef<number | null>(null);
+  const heldPointerRef = useRef<DragPointer | null>(null);
+  const sceneInteractionRef = useRef<SceneInteraction>({ active: false, deltaX: 0,
+    gestureId: 0, touch: window.matchMedia("(pointer: coarse)").matches });
   const requestRef = useRef(0);
   const generationRequestRef = useRef(0);
+  const [demoSamples, setDemoSamples] = useState<DemoSample[]>([]);
+  const [samplesError, setSamplesError] = useState("");
+  const demoSampleRef = useRef<DemoSample | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadDemoSamples().then((samples) => {
+      if (cancelled) return;
+      setDemoSamples(samples);
+      const id = new URLSearchParams(window.location.search).get("sample");
+      const sample = samples.find((item) => item.id === id);
+      if (sample && requestRef.current === 0) openDemoSample(sample);
+    }).catch((cause) => {
+      if (!cancelled) setSamplesError(cause instanceof Error ? cause.message : "Sample photos could not be loaded.");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  function openDemoSample(sample: DemoSample) {
+    requestRef.current += 1;
+    generationRequestRef.current += 1;
+    stopDrag();
+    demoSampleRef.current = sample;
+    setError("");
+    setFilename(`${sample.id}.webp`);
+    setResult(sample.result);
+    setZoom(sample.result.composition.scale);
+    setStyles(sample.styles);
+    setSelectedStyle(sample.defaultStyle);
+    setShowBefore(false);
+    setShowMask(false);
+    setShowControls(false);
+    setGenerating(false);
+    setGenerationError("");
+    setExportError("");
+    setReveal(null);
+    setRevealError("");
+    setSpatialError("");
+    setMode("preview");
+  }
 
   useEffect(
     () => () => {
@@ -110,6 +195,13 @@ function App() {
 
   useEffect(() => {
     if (!result) return;
+    if (demoSampleRef.current?.result.id === result.id) {
+      setDepthResult(demoSampleRef.current.depth);
+      setDepthStage("complete");
+      setDepthError("");
+      setReadyDepth(null);
+      return;
+    }
     let cancelled = false;
     setDepthResult(null);
     setDepthError("");
@@ -156,6 +248,8 @@ function App() {
       return;
     }
     const request = ++requestRef.current;
+    demoSampleRef.current = null;
+    clearSampleQuery();
     generationRequestRef.current += 1;
     setFilename(file.name);
     setError("");
@@ -169,7 +263,9 @@ function App() {
     setGenerating(false);
     setGenerationError("");
     setExportError("");
-    setHolding(false);
+    setReveal(null);
+    setRevealError("");
+    stopDrag();
     setStage("queued");
     setMode("processing");
     try {
@@ -216,17 +312,24 @@ function App() {
     requestRef.current += 1;
     generationRequestRef.current += 1;
     setResult(null);
+    demoSampleRef.current = null;
+    clearSampleQuery();
     setDepthResult(null);
-    setHolding(false);
+    setReveal(null);
+    setRevealError("");
+    stopDrag();
     setError("");
     setMode("upload");
   }
 
   async function generateStyle() {
     if (!result || generating || !result.sky.eligible) return;
-    stopHold();
-    if (styles[selectedStyle]) {
+    stopDrag();
+    setReveal(null);
+    setRevealError("");
+    if (styles[selectedStyle]?.atmosphereVersion === CURRENT_ATMOSPHERE_VERSION) {
       setShowBefore(false);
+      playReveal(styles[selectedStyle]!);
       return;
     }
     const request = ++generationRequestRef.current;
@@ -245,6 +348,7 @@ function App() {
           setSelectedStyle(style);
           setShowBefore(false);
           setGenerating(false);
+          playReveal(job.result);
           return;
         }
         if (job.status === "failed") throw new Error(job.error || "Background generation failed.");
@@ -257,45 +361,101 @@ function App() {
     }
   }
 
-  const stopHold = useCallback(() => {
-    const pointerId = heldPointerRef.current;
+  const stopDrag = useCallback(() => {
+    const pointer = heldPointerRef.current;
     heldPointerRef.current = null;
-    if (pointerId !== null && photoStageRef.current?.hasPointerCapture(pointerId)) {
-      photoStageRef.current.releasePointerCapture(pointerId);
+    sceneInteractionRef.current.active = false;
+    sceneInteractionRef.current.deltaX = 0;
+    if (pointer && photoStageRef.current?.hasPointerCapture(pointer.id)) {
+      photoStageRef.current.releasePointerCapture(pointer.id);
     }
-    setHolding(false);
+    setDragging(false);
   }, []);
 
-  function startHold(event: PointerEvent<HTMLDivElement>) {
-    if (!canHold || !event.isPrimary || event.button !== 0) return;
-    event.preventDefault();
-    setTouchHold(event.pointerType === "touch");
-    heldPointerRef.current = event.pointerId;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setHolding(true);
-  }
-
-  function endHold(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerId === heldPointerRef.current) stopHold();
-  }
-
-  function moveHold(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerId !== heldPointerRef.current) return;
-    // Captured pointers keep delivering moves after leaving the photo.
+  function startDrag(event: PointerEvent<HTMLDivElement>) {
+    if (!canExplore || !event.isPrimary || event.button !== 0 || heldPointerRef.current ||
+      !Number.isFinite(event.clientX + event.clientY)) return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    if (event.clientX < bounds.left || event.clientX > bounds.right ||
-        event.clientY < bounds.top || event.clientY > bounds.bottom) stopHold();
+    if (bounds.width < 1) return;
+    const touch = event.pointerType === "touch";
+    heldPointerRef.current = { id: event.pointerId, startX: event.clientX,
+      startY: event.clientY, width: bounds.width, axis: touch ? "pending" : "horizontal" };
+    sceneInteractionRef.current = { active: true, deltaX: 0,
+      gestureId: sceneInteractionRef.current.gestureId + 1, touch };
+    // Touch waits for horizontal intent; native vertical scrolling stays free.
+    if (!touch) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        stopDrag();
+        return;
+      }
+      setDragging(true);
+    }
+  }
+
+  function endDrag(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerId === heldPointerRef.current?.id) stopDrag();
+  }
+
+  function lostDragCapture(event: PointerEvent<HTMLDivElement>) {
+    // Touch begins with implicit capture on the hit image/canvas. Transferring
+    // it to the stage emits a bubbled loss from that child, not from our drag.
+    if (event.target !== event.currentTarget ||
+      event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    endDrag(event);
+  }
+
+  function moveDrag(event: PointerEvent<HTMLDivElement>) {
+    const pointer = heldPointerRef.current;
+    if (!pointer || event.pointerId !== pointer.id) return;
+    if (!canExplore || !Number.isFinite(event.clientX + event.clientY) ||
+      (event.pointerType === "mouse" && event.buttons === 0)) {
+      stopDrag();
+      return;
+    }
+    const dx = event.clientX - pointer.startX;
+    const dy = event.clientY - pointer.startY;
+    if (pointer.axis === "pending") {
+      if (Math.abs(dy) >= 8 && Math.abs(dy) > Math.abs(dx) * 1.15) {
+        stopDrag();
+        return;
+      }
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      pointer.axis = "horizontal";
+      try {
+        event.currentTarget.setPointerCapture(pointer.id);
+      } catch {
+        stopDrag();
+        return;
+      }
+      setDragging(true);
+    }
+    if (event.cancelable) event.preventDefault();
+    sceneInteractionRef.current.deltaX = clamp(dx / pointer.width, -2, 2);
+  }
+
+  function leaveDrag(event: PointerEvent<HTMLDivElement>) {
+    const pointer = heldPointerRef.current;
+    if (pointer?.id === event.pointerId && pointer.axis === "pending") stopDrag();
   }
 
   useEffect(() => {
-    const hide = () => { if (document.hidden) stopHold(); };
-    window.addEventListener("blur", stopHold);
-    document.addEventListener("visibilitychange", hide);
-    return () => {
-      window.removeEventListener("blur", stopHold);
-      document.removeEventListener("visibilitychange", hide);
+    const blur = () => { stopDrag(); setPageActive(false); };
+    const focus = () => setPageActive(!document.hidden);
+    const visibility = () => {
+      if (document.hidden) stopDrag();
+      setPageActive(!document.hidden && document.hasFocus());
     };
-  }, [stopHold]);
+    window.addEventListener("blur", blur);
+    window.addEventListener("focus", focus);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("blur", blur);
+      window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [stopDrag]);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -331,6 +491,22 @@ function App() {
   const yShift = result?.sky.eligible
     ? clamp(Math.max(baseYShift, FILM_BAR_FRACTION + 0.15 - (1 - zoom) / 2 - zoom * skyBottom), -verticalLimit, verticalLimit)
     : baseYShift;
+  compositionRef.current = { zoom, shiftX: xShift, shiftY: yShift,
+    reducedMotion: prefersReducedMotion };
+
+  function playReveal(styled: RestyleResult) {
+    stopDrag();
+    setRevealError("");
+    const composition = compositionRef.current;
+    if (!result || composition.reducedMotion) {
+      setReveal(null);
+      return;
+    }
+    setReveal({ token: ++revealTokenRef.current, jobId: result.id, style: styled.style,
+      input: { sourceUrl: result.sourceUrl, backgroundUrl: styled.backgroundUrl,
+        subjectUrl: styled.subjectUrl, width: result.width, height: result.height,
+        zoom: composition.zoom, shiftX: composition.shiftX, shiftY: composition.shiftY } });
+  }
   const previewStyle = result
     ? ({
         aspectRatio: `${result.width} / ${result.height}`,
@@ -349,14 +525,15 @@ function App() {
         top: `${(-depthResult.padding.top / depthResult.height) * 100}%`,
       } as CSSProperties)
     : undefined;
-  const touchesImageEdge = result
-    ? result.subjectBounds[0] <= result.width * 0.02 ||
-      result.subjectBounds[1] <= result.height * 0.02 ||
-      result.subjectBounds[2] >= result.width * 0.98 ||
-      result.subjectBounds[3] >= result.height * 0.98
-    : false;
   const styledResult = styles[selectedStyle];
   const showingStyled = Boolean(styledResult && !showBefore);
+  const activeReveal = reveal && result?.id === reveal.jobId &&
+    selectedStyle === reveal.style && showingStyled && !showMask &&
+    !prefersReducedMotion && reveal.input.zoom === zoom &&
+    reveal.input.shiftX === xShift && reveal.input.shiftY === yShift
+    ? reveal : null;
+  const revealActive = activeReveal !== null;
+  activeRevealTokenRef.current = activeReveal?.token ?? null;
   const visibleDepth = useMemo(
     () => depthResult && showingStyled && styledResult
       ? { ...depthResult, backgroundUrl: styledResult.renderBackgroundUrl,
@@ -369,19 +546,23 @@ function App() {
   const visibleBackgroundUrl = showingStyled && styledResult
     ? (depthResult ? styledResult.renderBackgroundUrl : styledResult.backgroundUrl)
     : (depthResult?.backgroundUrl || result?.sourceUrl || "");
-  const canHold = showingStyled && spatialReady && !generating && !showMask &&
-    !prefersReducedMotion;
+  const canExplore = spatialReady && !showBefore && !generating && !showMask &&
+    !prefersReducedMotion && pageActive && !revealActive;
+
+  useEffect(() => {
+    if (reveal && !activeReveal) setReveal(null);
+  }, [reveal, activeReveal]);
 
   useEffect(() => {
     setReadyDepth(null);
     setSpatialError("");
     setMotionNotice("");
-    stopHold();
-  }, [visibleDepth, stopHold]);
+    stopDrag();
+  }, [visibleDepth, stopDrag]);
 
   useEffect(() => {
-    if (!canHold) stopHold();
-  }, [canHold, stopHold]);
+    if (!canExplore) stopDrag();
+  }, [canExplore, stopDrag]);
 
   async function downloadPng() {
     if (!result || !styledResult) return;
@@ -415,6 +596,7 @@ function App() {
           <sup>LAB / 01</sup>
         </button>
         <div className="topbar-right">
+          <a className="demo-film-link" href="/demo.html">Watch demo</a>
           <span className="topbar-note">
             A little more life in every frame.
           </span>
@@ -436,8 +618,8 @@ function App() {
                 Beyond the frame<span className="title-period">.</span>
               </h1>
               <p>
-                Hold the photo to wake the scene. The subject stays beyond the
-                frame.
+                A gentle drift brings the scene to life. Drag left or right to
+                explore the depth.
               </p>
             </div>
             <button
@@ -455,18 +637,19 @@ function App() {
             }}
           >
             <div
-              className={`photo-stage ${canHold ? "spatial-ready" : ""} ${holding && canHold ? "is-awake" : ""}`}
+              className={`photo-stage ${canExplore ? "spatial-ready" : ""} ${dragging && canExplore ? "is-dragging" : ""} ${revealActive ? "is-revealing" : ""}`}
+              data-reveal={revealActive ? "active" : "idle"}
               style={previewStyle}
               ref={photoStageRef}
-              onPointerDown={startHold}
-              onPointerUp={endHold}
-              onPointerCancel={endHold}
-              onPointerMove={moveHold}
-              onPointerLeave={stopHold}
-              onLostPointerCapture={endHold}
+              onPointerDown={startDrag}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onPointerMove={moveDrag}
+              onPointerLeave={leaveDrag}
+              onLostPointerCapture={lostDragCapture}
               aria-label={
-                canHold
-                  ? "Interactive spatial photo. Hold to animate."
+                canExplore
+                  ? "Interactive spatial photo. Drag left or right to explore depth."
                   : "Cinematic photo preview"
               }
             >
@@ -483,14 +666,15 @@ function App() {
                       <SpatialFrameScene
                         depth={visibleDepth}
                         backgroundMode={showingStyled ? "sky-layers" : "photo-depth"}
+                        subjectUrl={showingStyled && styledResult ? styledResult.subjectUrl : result.subjectUrl}
                         result={result}
                         zoom={zoom}
                         shiftX={xShift}
-                        touch={touchHold}
+                        interaction={sceneInteractionRef}
                         onMotionNotice={setMotionNotice}
                         stage={photoStageRef}
-                        active={holding && canHold}
-                        travelScale={showingStyled ? 1 : touchesImageEdge ? 0.45 : 1}
+                        autonomousEnabled={canExplore}
+                        travelScale={1}
                         onReady={(renderedDepth) => { setReadyDepth(renderedDepth); setSpatialError(""); }}
                         onUnavailable={(message) => {
                           setSpatialError(message);
@@ -515,6 +699,25 @@ function App() {
                   <img src={result.maskUrl} alt="AI subject mask" />
                 </div>
               )}
+              {activeReveal && (
+                <Suspense fallback={
+                  <div className="photo-reveal-overlay">
+                    <img src={activeReveal.input.sourceUrl} alt="Original photograph" draggable="false" />
+                  </div>
+                }>
+                  <PhotoRevealPlayer
+                    key={activeReveal.token}
+                    input={activeReveal.input}
+                    playing={pageActive}
+                    onComplete={() => setReveal((current) => current?.token === activeReveal.token ? null : current)}
+                    onUnavailable={(message) => {
+                      if (activeRevealTokenRef.current !== activeReveal.token) return;
+                      setReveal((current) => current?.token === activeReveal.token ? null : current);
+                      setRevealError(message);
+                    }}
+                  />
+                </Suspense>
+              )}
             </div>
             <div className="photo-corner photo-corner-tl" />
             <div className="photo-corner photo-corner-br" />
@@ -525,7 +728,7 @@ function App() {
                 <span className="eyebrow">AI BACKGROUND STUDIO</span>
                 <h2>Choose the atmosphere.</h2>
               </div>
-              <span className="style-studio-note">AI sky + your original subject. Best with open-sky photos.</span>
+              <span className="style-studio-note">AI sky + your subject, with balanced colors.</span>
             </div>
             <div className="style-choices">
               {styleOptions.map((option) => (
@@ -533,7 +736,7 @@ function App() {
                   key={option.id}
                   className={`style-choice ${selectedStyle === option.id ? "selected" : ""}`}
                   disabled={generating}
-                  onClick={() => { stopHold(); setSelectedStyle(option.id); setShowBefore(false); setGenerationError(""); }}
+                  onClick={() => { stopDrag(); setReveal(null); setSelectedStyle(option.id); setShowBefore(false); setGenerationError(""); }}
                   aria-pressed={selectedStyle === option.id}
                 >
                   <span className={`style-swatch ${option.id}`} />
@@ -545,20 +748,25 @@ function App() {
             <div className="style-actions">
               <button className="style-primary" onClick={() => void generateStyle()} disabled={generating || !result.sky.eligible}>
                 {generating ? <span className="loading-spinner" /> : <Sparkles size={17} />}
-                {generating ? (restyleStageLabels[generationStage] || "Generating your background") : styledResult ? "Show result" : "Generate background"}
+                {generating ? (restyleStageLabels[generationStage] || "Generating your background") : styledResult ? (styledResult.atmosphereVersion === CURRENT_ATMOSPHERE_VERSION ? "Show result" : "Update atmosphere") : "Generate background"}
               </button>
-              <button className="action-button" onClick={() => setShowBefore(!showBefore)} disabled={!styledResult}>
+              <button className="action-button" onClick={() => { stopDrag(); setReveal(null); setShowBefore(!showBefore); }} disabled={!styledResult}>
                 {showBefore ? "View after" : "View before"}
               </button>
               <button className="action-button" onClick={() => void downloadPng()} disabled={!styledResult || generating || showBefore || showMask}>
                 <Download size={17} /> Download PNG
               </button>
+              <button className="action-button" disabled={!styledResult || generating || showBefore || showMask || prefersReducedMotion}
+                onClick={() => revealActive ? setReveal(null) : styledResult && playReveal(styledResult)}>
+                <RotateCcw size={16} /> {revealActive ? "Skip animation" : "Replay transition"}
+              </button>
             </div>
             {generating && <p className="style-status" role="status">{restyleStageLabels[generationStage] || "Generating"} · First use downloads model weights and can take several minutes.</p>}
             {generationError && <p className="style-error" role="alert">{generationError}</p>}
             {exportError && <p className="style-error" role="alert">{exportError}</p>}
+            {revealError && <p className="style-error" role="alert">{revealError}</p>}
             {!result.sky.eligible && <p className="style-status" role="status">{result.sky.reason}</p>}
-            <p className="style-status">Only confirmed sky is edited. Ground and other scene details stay. PNG saves the centered, still composition. {selectedStyle === "cinematic-night" && "Your subject keeps its original lighting."}</p>
+            <p className="style-status">Only confirmed sky is replaced. Subject and scene details stay, with gentle color balancing. PNG saves the centered, still composition. {selectedStyle === "cinematic-night" && "Blue-hour tones keep the subject visible."}</p>
           </section>
           <div className="preview-footer">
             <div className="result-caption">
@@ -573,7 +781,7 @@ function App() {
             </div>
             <div className="result-actions">
               <button
-                onClick={() => setShowMask(!showMask)}
+                onClick={() => { stopDrag(); setReveal(null); setShowMask(!showMask); }}
                 className={showMask ? "action-button active" : "action-button"}
               >
                 <ScanLine size={17} /> {showMask ? "Hide mask" : "View mask"}
@@ -589,7 +797,7 @@ function App() {
           {result.compositionNotice && (
             <p className="composition-notice">{result.compositionNotice}</p>
           )}
-          {motionNotice && showingStyled && <p className="composition-notice" role="status">{motionNotice}</p>}
+          {motionNotice && <p className="composition-notice" role="status">{motionNotice}</p>}
           {showControls && (
             <section
               className="controls-panel"
@@ -626,14 +834,16 @@ function App() {
             </section>
           )}
           <p className="phase-note" role="status">
-            {depthError || spatialError
+            {revealActive
+              ? "Playing the photo transition · Skip animation to return to the preview."
+              : depthError || spatialError
               ? `Static preview available. Spatial analysis: ${depthError || spatialError}`
               : spatialReady
                 ? prefersReducedMotion
                   ? "Spatial preview ready · Motion is reduced in your system settings."
-                  : showingStyled && !generating && !showMask
-                    ? "HOLD TO LIVE · Press and hold the photo; release to settle."
-                    : "Still preview · Generate a background and view After to hold to live."
+                  : !showBefore && !generating && !showMask
+                    ? "DRAG TO EXPLORE · Move left or right; release to return to the gentle drift."
+                    : "Still comparison · View the original preview or After to explore depth."
                 : `Static preview ready · Preparing spatial depth (${depthStage}).`}
           </p>
         </main>
@@ -732,11 +942,32 @@ function App() {
               <span>03</span>
               <div>
                 <strong>Feel the space</strong>
-                <small>Hold to wake the scene</small>
+                <small>Drag to explore the depth</small>
               </div>
             </div>
           </div>
         </main>
+      )}
+      {mode === "upload" && (demoSamples.length > 0 || samplesError) && (
+        <section className="sample-gallery" aria-label="Demo photos">
+          <div className="sample-gallery-heading">
+            <div><span className="eyebrow">TRY A REAL EXAMPLE</span><h2>Choose a ready-made frame.</h2></div>
+            <p>Processed locally. Explore, compare, or replay the transformation.</p>
+          </div>
+          {samplesError ? <p role="status">{samplesError}</p> : (
+            <div className="sample-grid">
+              {demoSamples.map((sample) => (
+                <button className="sample-card" key={sample.id} onClick={() => openDemoSample(sample)}>
+                  <img src={sample.thumbnailUrl} alt={sample.title} loading="lazy" />
+                  <span><strong>{sample.title}</strong><small>{sample.category}</small></span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {mode === "preview" && demoSampleRef.current && (
+        <p className="sample-credit">Sample photo: <a href={demoSampleRef.current.source.url} target="_blank" rel="noreferrer">{demoSampleRef.current.source.author}</a> · {demoSampleRef.current.source.license}</p>
       )}
       <input
         ref={inputRef}

@@ -6,15 +6,24 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "demo:studio": "remotion studio src/remotion/submission-entry.ts",
+    "demo:render": "node scripts/render-submission-demo.mjs",
+    "demo:check": "node scripts/check-submission-assets.mjs",
+    "demo:verify": "node scripts/submission-demo-browser.mjs"
   },
   "dependencies": {
+    "@remotion/player": "4.0.534",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "remotion": "4.0.534",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@remotion/bundler": "4.0.534",
+    "@remotion/cli": "4.0.534",
+    "@remotion/renderer": "4.0.534",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.186.0",

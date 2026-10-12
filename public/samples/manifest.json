@@ -1,0 +1,957 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "tower",
+      "title": "Big Ben, London",
+      "category": "architecture",
+      "thumbnailUrl": "/samples/tower/thumbnail.webp",
+      "defaultStyle": "dreamy-pink",
+      "source": {
+        "url": "https://commons.wikimedia.org/wiki/File:BigBenLondon.jpg",
+        "author": "Massimo Catarinella",
+        "license": "CC BY-SA 3.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/"
+      },
+      "result": {
+        "id": "sample:tower",
+        "width": 683,
+        "height": 1024,
+        "subjectBounds": [
+          166,
+          44,
+          471,
+          1024
+        ],
+        "subjectStats": {
+          "occupancy": 0.2836,
+          "leftEdgeFraction": 0.0,
+          "rightEdgeFraction": 0.0
+        },
+        "sky": {
+          "eligible": true,
+          "skyFraction": 0.7113164005307467,
+          "confidenceCoverage": 0.9850386436786323,
+          "reason": null,
+          "model": "nvidia/segformer-b0-finetuned-ade-512-512",
+          "modelRevision": "489d5cd81a0b59fab9b7ea758d3548ebe99677da",
+          "status": "supported",
+          "boundaryRefinement": {
+            "method": "native-rgb-connected-boundary",
+            "status": "refined",
+            "reachPixels": 32,
+            "modelGrid": [
+              128,
+              128
+            ],
+            "colorThresholdLab": 8.0,
+            "candidatePixels": 9766,
+            "changedPixels": 12358,
+            "addedPixels": 9710,
+            "strengthenedPixels": 2648,
+            "blockedOtherClassPixels": 381,
+            "maximumChangedDistanceToSubject": 15.0,
+            "maximumChangedDistanceToSky": 26.0
+          },
+          "bounds": [
+            0,
+            0,
+            683,
+            1024
+          ],
+          "maskUrl": "/samples/tower/editable-sky.png"
+        },
+        "composition": {
+          "scale": 1.0,
+          "focusX": 0.4663,
+          "focusY": 0.5215
+        },
+        "compositionNotice": null,
+        "sourceUrl": "/samples/tower/source.webp",
+        "maskUrl": "/samples/tower/mask.png",
+        "subjectUrl": "/samples/tower/subject.png",
+        "model": "ZhengPeng7/BiRefNet"
+      },
+      "depth": {
+        "jobId": "sample:tower",
+        "width": 683,
+        "height": 1024,
+        "renderWidth": 765,
+        "renderHeight": 1146,
+        "padding": {
+          "left": 41,
+          "right": 41,
+          "top": 61,
+          "bottom": 61
+        },
+        "foregroundDepth": 0.8706,
+        "encoding": "uint8-png-near-white",
+        "depthUrl": "/samples/tower/depth.png",
+        "renderDepthUrl": "/samples/tower/render-depth.png",
+        "backgroundUrl": "/samples/tower/background.webp",
+        "model": "depth-anything/Depth-Anything-V2-Small-hf",
+        "backgroundMethod": "OpenCV Telea local inpaint",
+        "meshDepthDiagnostics": {
+          "status": "ready",
+          "eligible": true,
+          "subjectPixelCount": 195547,
+          "subjectRange": 1.0113686084747315,
+          "subjectRangeRatio": 0.3106338576213291,
+          "minimumSubjectRange": 6.8037879827897996e-06,
+          "reason": null
+        },
+        "meshDepthUrl": "/samples/tower/subject-depth-f32.bin",
+        "meshDepthMetadata": {
+          "width": 683,
+          "height": 1024,
+          "encoding": "float32-little-endian-row-major",
+          "model": "depth-anything/Depth-Anything-V2-Small-hf",
+          "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+          "source": "source.webp",
+          "mask": "mask.png",
+          "nearDirection": "larger-prediction-is-nearer",
+          "subjectP05": 2.290605902671814,
+          "subjectP95": 3.3019745111465455,
+          "subjectMedian": 2.829606056213379,
+          "globalP02": 0.0,
+          "globalP98": 3.2558221960067746,
+          "globalMin": -0.43135249614715576,
+          "globalMax": 3.5671443939208984
+        }
+      },
+      "styles": {
+        "dreamy-pink": {
+          "jobId": "sample:tower",
+          "style": "dreamy-pink",
+          "backgroundUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/tower/styles/dreamy-pink/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/tower/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.46,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.24,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 2596749283,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "close-up photograph of soft rose pink and lavender cumulus cloud formations, airy pastel clouds covering the sky from edge to edge, textured glowing cloud edges, pale peach light, looking straight upward, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, gray sky, storm, dull blue, grain, noise, oversaturated magenta",
+            "edgePixelsChanged": 6754,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "mild warm-lilac RGB ambience",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        },
+        "golden-hour": {
+          "jobId": "sample:tower",
+          "style": "golden-hour",
+          "backgroundUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/tower/styles/golden-hour/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/tower/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.48,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.28,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 1132834330,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "golden-hour-original",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+            "edgePixelsChanged": 6754,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "unchanged",
+            "layerHarmonizationVersion": "unchanged"
+          }
+        },
+        "cinematic-night": {
+          "jobId": "sample:tower",
+          "style": "cinematic-night",
+          "backgroundUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/tower/styles/cinematic-night/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/tower/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.58,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.37,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 1053453892,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic blue hour evening sky, calm cobalt and slate blue cloud layers, soft luminous twilight clouds, restrained atmospheric contrast, natural dusk light, sky filling the entire frame, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, stars, starfield, galaxy, milky way, astrophotography, glitter, speckles, grain, noise, neon, orange sun",
+            "edgePixelsChanged": 6754,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "moderate exposure reduction with cool shadows",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait",
+      "title": "Coastal portrait",
+      "category": "person",
+      "thumbnailUrl": "/samples/portrait/thumbnail.webp",
+      "defaultStyle": "dreamy-pink",
+      "source": {
+        "url": "https://images.unsplash.com/photo-1589869024358-6874d0915b82?w=1600&q=85&fit=max",
+        "author": "Not identified in the original download record",
+        "license": "Unsplash License",
+        "licenseUrl": "https://unsplash.com/license"
+      },
+      "result": {
+        "id": "sample:portrait",
+        "width": 1024,
+        "height": 682,
+        "subjectBounds": [
+          450,
+          362,
+          533,
+          609
+        ],
+        "subjectStats": {
+          "occupancy": 0.01598,
+          "leftEdgeFraction": 0.0,
+          "rightEdgeFraction": 0.0
+        },
+        "sky": {
+          "eligible": true,
+          "skyFraction": 0.45317798066348974,
+          "confidenceCoverage": 0.9850856509758246,
+          "reason": null,
+          "model": "nvidia/segformer-b0-finetuned-ade-512-512",
+          "modelRevision": "489d5cd81a0b59fab9b7ea758d3548ebe99677da",
+          "status": "supported",
+          "boundaryRefinement": {
+            "method": "native-rgb-connected-boundary",
+            "status": "no-change",
+            "reachPixels": 32,
+            "modelGrid": [
+              128,
+              128
+            ],
+            "colorThresholdLab": 8.0,
+            "candidatePixels": 0,
+            "changedPixels": 0,
+            "addedPixels": 0,
+            "strengthenedPixels": 0,
+            "blockedOtherClassPixels": 1,
+            "maximumChangedDistanceToSubject": 0.0,
+            "maximumChangedDistanceToSky": 0.0
+          },
+          "bounds": [
+            0,
+            0,
+            1024,
+            310
+          ],
+          "maskUrl": "/samples/portrait/editable-sky.png"
+        },
+        "composition": {
+          "scale": 1.601,
+          "focusX": 0.48,
+          "focusY": 0.7119
+        },
+        "compositionNotice": null,
+        "sourceUrl": "/samples/portrait/source.webp",
+        "maskUrl": "/samples/portrait/mask.png",
+        "subjectUrl": "/samples/portrait/subject.png",
+        "model": "ZhengPeng7/BiRefNet"
+      },
+      "depth": {
+        "jobId": "sample:portrait",
+        "width": 1024,
+        "height": 682,
+        "renderWidth": 1146,
+        "renderHeight": 764,
+        "padding": {
+          "left": 61,
+          "right": 61,
+          "top": 41,
+          "bottom": 41
+        },
+        "foregroundDepth": 0.7804,
+        "encoding": "uint8-png-near-white",
+        "depthUrl": "/samples/portrait/depth.png",
+        "renderDepthUrl": "/samples/portrait/render-depth.png",
+        "backgroundUrl": "/samples/portrait/background.webp",
+        "model": "depth-anything/Depth-Anything-V2-Small-hf",
+        "backgroundMethod": "OpenCV Telea local inpaint",
+        "meshDepthDiagnostics": {
+          "status": "ready",
+          "eligible": true,
+          "subjectPixelCount": 10714,
+          "subjectRange": 0.4965734958648689,
+          "subjectRangeRatio": 0.08342214891349545,
+          "minimumSubjectRange": 9.448142009205185e-06,
+          "reason": null
+        },
+        "meshDepthUrl": "/samples/portrait/subject-depth-f32.bin",
+        "meshDepthMetadata": {
+          "width": 1024,
+          "height": 682,
+          "encoding": "float32-little-endian-row-major",
+          "model": "depth-anything/Depth-Anything-V2-Small-hf",
+          "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+          "source": "source.webp",
+          "mask": "mask.png",
+          "nearDirection": "larger-prediction-is-nearer",
+          "subjectP05": 4.280039286613464,
+          "subjectP95": 4.776612782478333,
+          "subjectMedian": 4.659176826477051,
+          "globalP02": 0.0,
+          "globalP98": 5.9525378131866455,
+          "globalMin": -0.009910304099321365,
+          "globalMax": 6.301182270050049
+        }
+      },
+      "styles": {
+        "dreamy-pink": {
+          "jobId": "sample:portrait",
+          "style": "dreamy-pink",
+          "backgroundUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/portrait/styles/dreamy-pink/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/portrait/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.4,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.2,
+            "modelWasLoaded": true,
+            "modelSize": [
+              640,
+              448
+            ],
+            "seed": 2361234801,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "close-up photograph of soft rose pink and lavender cumulus cloud formations, airy pastel clouds covering the sky from edge to edge, textured glowing cloud edges, pale peach light, looking straight upward, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, gray sky, storm, dull blue, grain, noise, oversaturated magenta",
+            "edgePixelsChanged": 0,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "mild warm-lilac RGB ambience",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        },
+        "golden-hour": {
+          "jobId": "sample:portrait",
+          "style": "golden-hour",
+          "backgroundUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/portrait/styles/golden-hour/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/portrait/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.52,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.31,
+            "modelWasLoaded": true,
+            "modelSize": [
+              640,
+              448
+            ],
+            "seed": 1702716544,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "golden-hour-original",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+            "edgePixelsChanged": 0,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "unchanged",
+            "layerHarmonizationVersion": "unchanged"
+          }
+        },
+        "cinematic-night": {
+          "jobId": "sample:portrait",
+          "style": "cinematic-night",
+          "backgroundUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/portrait/styles/cinematic-night/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/portrait/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.48,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.27,
+            "modelWasLoaded": true,
+            "modelSize": [
+              640,
+              448
+            ],
+            "seed": 1800486766,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic blue hour evening sky, calm cobalt and slate blue cloud layers, soft luminous twilight clouds, restrained atmospheric contrast, natural dusk light, sky filling the entire frame, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, stars, starfield, galaxy, milky way, astrophotography, glitter, speckles, grain, noise, neon, orange sun",
+            "edgePixelsChanged": 0,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "moderate exposure reduction with cool shadows",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        }
+      }
+    },
+    {
+      "id": "dog",
+      "title": "Golden retriever",
+      "category": "pet",
+      "thumbnailUrl": "/samples/dog/thumbnail.webp",
+      "defaultStyle": "golden-hour",
+      "source": {
+        "url": "https://images.unsplash.com/photo-1552053831-71594a27632d",
+        "author": "Not identified in the original download record",
+        "license": "Unsplash License",
+        "licenseUrl": "https://unsplash.com/license"
+      },
+      "result": {
+        "id": "sample:dog",
+        "width": 639,
+        "height": 1024,
+        "subjectBounds": [
+          133,
+          269,
+          513,
+          900
+        ],
+        "subjectStats": {
+          "occupancy": 0.17924,
+          "leftEdgeFraction": 0.0,
+          "rightEdgeFraction": 0.0
+        },
+        "sky": {
+          "eligible": true,
+          "skyFraction": 0.1336912534233177,
+          "confidenceCoverage": 0.9161998477393843,
+          "reason": null,
+          "model": "nvidia/segformer-b0-finetuned-ade-512-512",
+          "modelRevision": "489d5cd81a0b59fab9b7ea758d3548ebe99677da",
+          "status": "supported",
+          "boundaryRefinement": {
+            "method": "native-rgb-connected-boundary",
+            "status": "refined",
+            "reachPixels": 32,
+            "modelGrid": [
+              128,
+              128
+            ],
+            "colorThresholdLab": 8.0,
+            "candidatePixels": 42,
+            "changedPixels": 81,
+            "addedPixels": 42,
+            "strengthenedPixels": 39,
+            "blockedOtherClassPixels": 2,
+            "maximumChangedDistanceToSubject": 31.76476034853718,
+            "maximumChangedDistanceToSky": 3.1622776601683795
+          },
+          "bounds": [
+            0,
+            0,
+            639,
+            307
+          ],
+          "maskUrl": "/samples/dog/editable-sky.png"
+        },
+        "composition": {
+          "scale": 1.0,
+          "focusX": 0.5055,
+          "focusY": 0.5708
+        },
+        "compositionNotice": null,
+        "sourceUrl": "/samples/dog/source.webp",
+        "maskUrl": "/samples/dog/mask.png",
+        "subjectUrl": "/samples/dog/subject.png",
+        "model": "ZhengPeng7/BiRefNet"
+      },
+      "depth": {
+        "jobId": "sample:dog",
+        "width": 639,
+        "height": 1024,
+        "renderWidth": 715,
+        "renderHeight": 1146,
+        "padding": {
+          "left": 38,
+          "right": 38,
+          "top": 61,
+          "bottom": 61
+        },
+        "foregroundDepth": 0.5686,
+        "encoding": "uint8-png-near-white",
+        "depthUrl": "/samples/dog/depth.png",
+        "renderDepthUrl": "/samples/dog/render-depth.png",
+        "backgroundUrl": "/samples/dog/background.webp",
+        "model": "depth-anything/Depth-Anything-V2-Small-hf",
+        "backgroundMethod": "OpenCV Telea local inpaint",
+        "meshDepthDiagnostics": {
+          "status": "ready",
+          "eligible": true,
+          "subjectPixelCount": 115106,
+          "subjectRange": 1.4936893582344055,
+          "subjectRangeRatio": 0.23351038898593846,
+          "minimumSubjectRange": 1.085722124116728e-05,
+          "reason": null
+        },
+        "meshDepthUrl": "/samples/dog/subject-depth-f32.bin",
+        "meshDepthMetadata": {
+          "width": 639,
+          "height": 1024,
+          "encoding": "float32-little-endian-row-major",
+          "model": "depth-anything/Depth-Anything-V2-Small-hf",
+          "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+          "source": "source.webp",
+          "mask": "mask.png",
+          "nearDirection": "larger-prediction-is-nearer",
+          "subjectP05": 2.9864415526390076,
+          "subjectP95": 4.480130910873413,
+          "subjectMedian": 3.647054672241211,
+          "globalP02": 0.0,
+          "globalP98": 6.396671962738037,
+          "globalMin": -0.258121520280838,
+          "globalMax": 7.1688232421875
+        }
+      },
+      "styles": {
+        "dreamy-pink": {
+          "jobId": "sample:dog",
+          "style": "dreamy-pink",
+          "backgroundUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/dog/styles/dreamy-pink/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/dog/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.01,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 3.8,
+            "modelWasLoaded": true,
+            "modelSize": [
+              384,
+              640
+            ],
+            "seed": 3741935636,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "close-up photograph of soft rose pink and lavender cumulus cloud formations, airy pastel clouds covering the sky from edge to edge, textured glowing cloud edges, pale peach light, looking straight upward, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, gray sky, storm, dull blue, grain, noise, oversaturated magenta",
+            "edgePixelsChanged": 69,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "mild warm-lilac RGB ambience",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        },
+        "golden-hour": {
+          "jobId": "sample:dog",
+          "style": "golden-hour",
+          "backgroundUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/dog/styles/golden-hour/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/dog/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.03,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 3.83,
+            "modelWasLoaded": true,
+            "modelSize": [
+              384,
+              640
+            ],
+            "seed": 3392245936,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "golden-hour-original",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+            "edgePixelsChanged": 69,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "unchanged",
+            "layerHarmonizationVersion": "unchanged"
+          }
+        },
+        "cinematic-night": {
+          "jobId": "sample:dog",
+          "style": "cinematic-night",
+          "backgroundUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/dog/styles/cinematic-night/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/dog/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.18,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 3.95,
+            "modelWasLoaded": true,
+            "modelSize": [
+              384,
+              640
+            ],
+            "seed": 2233148662,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic blue hour evening sky, calm cobalt and slate blue cloud layers, soft luminous twilight clouds, restrained atmospheric contrast, natural dusk light, sky filling the entire frame, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, stars, starfield, galaxy, milky way, astrophotography, glitter, speckles, grain, noise, neon, orange sun",
+            "edgePixelsChanged": 69,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "moderate exposure reduction with cool shadows",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        }
+      }
+    },
+    {
+      "id": "rocket",
+      "title": "Space Shuttle Endeavour launch",
+      "category": "rocket",
+      "thumbnailUrl": "/samples/rocket/thumbnail.webp",
+      "defaultStyle": "dreamy-pink",
+      "source": {
+        "url": "https://images.nasa.gov/details/KSC-07PD-2256",
+        "author": "NASA",
+        "license": "NASA Images and Media Usage Guidelines",
+        "licenseUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+      },
+      "result": {
+        "id": "sample:rocket",
+        "width": 681,
+        "height": 1024,
+        "subjectBounds": [
+          253,
+          118,
+          486,
+          882
+        ],
+        "subjectStats": {
+          "occupancy": 0.05252,
+          "leftEdgeFraction": 0.0,
+          "rightEdgeFraction": 0.0
+        },
+        "sky": {
+          "eligible": true,
+          "skyFraction": 0.7980107378854625,
+          "confidenceCoverage": 0.9922006060812666,
+          "reason": null,
+          "model": "nvidia/segformer-b0-finetuned-ade-512-512",
+          "modelRevision": "489d5cd81a0b59fab9b7ea758d3548ebe99677da",
+          "status": "supported",
+          "boundaryRefinement": {
+            "method": "native-rgb-connected-boundary",
+            "status": "refined",
+            "reachPixels": 32,
+            "modelGrid": [
+              128,
+              128
+            ],
+            "colorThresholdLab": 8.0,
+            "candidatePixels": 243,
+            "changedPixels": 2713,
+            "addedPixels": 191,
+            "strengthenedPixels": 2522,
+            "blockedOtherClassPixels": 845,
+            "maximumChangedDistanceToSubject": 31.906112267087632,
+            "maximumChangedDistanceToSky": 24.331050121192877
+          },
+          "bounds": [
+            0,
+            0,
+            681,
+            885
+          ],
+          "maskUrl": "/samples/rocket/editable-sky.png"
+        },
+        "composition": {
+          "scale": 1.0,
+          "focusX": 0.5426,
+          "focusY": 0.4883
+        },
+        "compositionNotice": null,
+        "sourceUrl": "/samples/rocket/source.webp",
+        "maskUrl": "/samples/rocket/mask.png",
+        "subjectUrl": "/samples/rocket/subject.png",
+        "model": "ZhengPeng7/BiRefNet"
+      },
+      "depth": {
+        "jobId": "sample:rocket",
+        "width": 681,
+        "height": 1024,
+        "renderWidth": 763,
+        "renderHeight": 1146,
+        "padding": {
+          "left": 41,
+          "right": 41,
+          "top": 61,
+          "bottom": 61
+        },
+        "foregroundDepth": 0.302,
+        "encoding": "uint8-png-near-white",
+        "depthUrl": "/samples/rocket/depth.png",
+        "renderDepthUrl": "/samples/rocket/render-depth.png",
+        "backgroundUrl": "/samples/rocket/background.webp",
+        "model": "depth-anything/Depth-Anything-V2-Small-hf",
+        "backgroundMethod": "OpenCV Telea local inpaint",
+        "meshDepthDiagnostics": {
+          "status": "ready",
+          "eligible": true,
+          "subjectPixelCount": 32646,
+          "subjectRange": 0.6904827952384949,
+          "subjectRangeRatio": 0.22563669799866812,
+          "minimumSubjectRange": 3.62901027983753e-06,
+          "reason": null
+        },
+        "meshDepthUrl": "/samples/rocket/subject-depth-f32.bin",
+        "meshDepthMetadata": {
+          "width": 681,
+          "height": 1024,
+          "encoding": "float32-little-endian-row-major",
+          "model": "depth-anything/Depth-Anything-V2-Small-hf",
+          "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+          "source": "source.webp",
+          "mask": "mask.png",
+          "nearDirection": "larger-prediction-is-nearer",
+          "subjectP05": 0.6071192026138306,
+          "subjectP95": 1.2976019978523254,
+          "subjectMedian": 0.9317054748535156,
+          "globalP02": 0.0,
+          "globalP98": 3.060152897834778,
+          "globalMin": -0.32243645191192627,
+          "globalMax": 3.73183012008667
+        }
+      },
+      "styles": {
+        "dreamy-pink": {
+          "jobId": "sample:rocket",
+          "style": "dreamy-pink",
+          "backgroundUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/rocket/styles/dreamy-pink/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/rocket/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.58,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.32,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 1325206426,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "close-up photograph of soft rose pink and lavender cumulus cloud formations, airy pastel clouds covering the sky from edge to edge, textured glowing cloud edges, pale peach light, looking straight upward, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, gray sky, storm, dull blue, grain, noise, oversaturated magenta",
+            "edgePixelsChanged": 7165,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "mild warm-lilac RGB ambience",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        },
+        "golden-hour": {
+          "jobId": "sample:rocket",
+          "style": "golden-hour",
+          "backgroundUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/rocket/styles/golden-hour/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/rocket/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.89,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.62,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 2085710938,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "golden-hour-original",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts",
+            "edgePixelsChanged": 7165,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "unchanged",
+            "layerHarmonizationVersion": "unchanged"
+          }
+        },
+        "cinematic-night": {
+          "jobId": "sample:rocket",
+          "style": "cinematic-night",
+          "backgroundUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/background.webp",
+          "renderBackgroundUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/render-background.webp",
+          "compositeUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/composite.png",
+          "subjectUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/subject.png",
+          "renderSkyUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/render-sky.webp",
+          "renderSceneUrl": "/samples/rocket/styles/cinematic-night/sky-scene-ambience-v2/render-scene.png",
+          "editableSkyUrl": "/samples/rocket/editable-sky.png",
+          "backgroundGeometry": "sky-layers",
+          "compositingVersion": "native-sky-boundary-v2",
+          "atmosphereVersion": "sky-scene-ambience-v2",
+          "model": "stable-diffusion-v1-5/stable-diffusion-inpainting",
+          "metrics": {
+            "seconds": 4.27,
+            "loadSeconds": 0.0,
+            "inferenceSeconds": 4.05,
+            "modelWasLoaded": true,
+            "modelSize": [
+              448,
+              640
+            ],
+            "seed": 683285465,
+            "modelRevision": "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb",
+            "skyGradeVersion": "pink-clouds-blue-hour-v2",
+            "steps": 22,
+            "guidanceScale": 9.0,
+            "strength": 1.0,
+            "skyCropFraction": 0.35,
+            "prompt": "photorealistic blue hour evening sky, calm cobalt and slate blue cloud layers, soft luminous twilight clouds, restrained atmospheric contrast, natural dusk light, sky filling the entire frame, only open sky from edge to edge, no horizon, no ground, no objects",
+            "negativePrompt": "building, tower, clock, person, animal, tree, branches, leaves, forest, mountain, ground, horizon, water, lake, ocean, field, object, silhouette, duplicate subject, painting, cartoon, text, logo, artifacts, stars, starfield, galaxy, milky way, astrophotography, glitter, speckles, grain, noise, neon, orange sun",
+            "edgePixelsChanged": 7165,
+            "edgeBandPixels": 4,
+            "maxChannelCorrection": 48,
+            "sceneColorTreatment": "moderate exposure reduction with cool shadows",
+            "layerHarmonizationVersion": "pointwise-ambient-rgb-v1"
+          }
+        }
+      }
+    }
+  ]
+}

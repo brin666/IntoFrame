@@ -1,7 +1,8 @@
 """One-shot relative depth and conservative background preparation.
 
-The exported 8-bit PNG is a display/mesh control signal, not metric distance.
-White means nearer. All native assets use the EXIF-corrected source coordinates.
+The 8-bit PNG is a display control signal, not metric distance. Native float32
+prediction retains subject relief that scene-wide PNG normalization can clip.
+Larger values mean nearer; native assets use EXIF-corrected source coordinates.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ def _load_model():
     return processor, model
 
 
-def estimate(image: Image.Image) -> Image.Image:
+def _predict_raw(image: Image.Image) -> np.ndarray:
     import torch
 
     processor, model = _load_model()
@@ -44,6 +45,13 @@ def estimate(image: Image.Image) -> Image.Image:
             mode="bicubic",
             align_corners=False,
         )[0, 0].float().cpu().numpy()
+    return np.ascontiguousarray(prediction, dtype=np.float32)
+
+
+def _normalize_prediction(prediction: np.ndarray) -> Image.Image:
+    """Keep the legacy percentile clipping and smoothing exactly as before."""
+    if prediction.ndim != 2 or not prediction.size:
+        raise RuntimeError("Depth estimation returned invalid dimensions.")
     if not np.isfinite(prediction).all():
         raise RuntimeError("Depth estimation returned invalid values.")
     low, high = np.percentile(prediction, (2, 98))
@@ -53,6 +61,76 @@ def estimate(image: Image.Image) -> Image.Image:
     near = np.clip((prediction - low) / (high - low), 0.0, 1.0)
     near = cv2.GaussianBlur(near.astype(np.float32), (5, 5), 0.9)
     return Image.fromarray(np.round(near * 255).astype(np.uint8), "L")
+
+
+def estimate_with_raw(image: Image.Image) -> tuple[Image.Image, np.ndarray]:
+    """Return display depth and unquantized native depth from one inference."""
+    prediction = _predict_raw(image)
+    if prediction.shape != (image.height, image.width):
+        raise RuntimeError("Depth estimation returned a map with the wrong dimensions.")
+    return _normalize_prediction(prediction), prediction
+
+
+def estimate(image: Image.Image) -> Image.Image:
+    """Legacy PIL API; callers needing subject geometry use estimate_with_raw."""
+    return estimate_with_raw(image)[0]
+
+
+def subject_depth_metadata(
+    prediction: np.ndarray, mask: Image.Image
+) -> tuple[dict | None, dict]:
+    """Describe raw relief without turning a flat/weak subject into strong depth.
+
+    A one-percent scene-relative span is a conservative noise gate, not a model
+    confidence score. The consumer must use ``eligible`` before normalizing the
+    subject's range. Empty opaque masks retain the legacy scene-only output.
+    """
+    alpha = np.asarray(mask.convert("L"))
+    if prediction.shape != alpha.shape:
+        raise RuntimeError("Source alpha mask and raw depth map do not share dimensions.")
+    if prediction.ndim != 2 or not np.isfinite(prediction).all():
+        raise RuntimeError("Depth estimation returned invalid values.")
+    values = prediction[alpha > 160]
+    if not values.size:
+        return None, {
+            "status": "no-opaque-subject", "eligible": False,
+            "subjectPixelCount": 0,
+            "reason": "The subject mask has no opaque pixels to measure depth relief.",
+        }
+    global_low, global_high = np.percentile(prediction, (2, 98))
+    subject_low, subject_high = np.percentile(values, (5, 95))
+    scene_span = float(global_high - global_low)
+    subject_span = float(subject_high - subject_low)
+    # Float32 precision scales with value magnitude; do not inflate roundoff.
+    epsilon = max(1e-6, float(np.max(np.abs(values))) * np.finfo(np.float32).eps * 16)
+    range_ratio = subject_span / max(scene_span, epsilon)
+    status = "ready"
+    reason = None
+    if subject_span <= epsilon:
+        status = "flat-subject-range"
+        reason = "The depth model found too little subject relief for depth motion."
+    elif range_ratio < 0.01:
+        status = "weak-subject-range"
+        reason = "Subject depth relief is weak relative to the scene; depth motion is reduced."
+    metadata = {
+        "width": mask.width, "height": mask.height,
+        "encoding": "float32-little-endian-row-major",
+        "model": MODEL_ID, "revision": MODEL_REVISION,
+        "source": "source.webp", "mask": "mask.png",
+        "nearDirection": "larger-prediction-is-nearer",
+        "subjectP05": float(subject_low), "subjectP95": float(subject_high),
+        "subjectMedian": float(np.median(values)),
+        "globalP02": float(global_low), "globalP98": float(global_high),
+        "globalMin": float(prediction.min()), "globalMax": float(prediction.max()),
+    }
+    diagnostics = {
+        "status": status, "eligible": status == "ready",
+        "subjectPixelCount": int(values.size),
+        "subjectRange": subject_span, "subjectRangeRatio": range_ratio,
+        "minimumSubjectRange": epsilon,
+        "reason": reason,
+    }
+    return metadata, diagnostics
 
 
 def prepare_render_assets(

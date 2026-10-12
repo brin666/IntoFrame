@@ -6,6 +6,8 @@ import numpy as np
 from PIL import Image
 
 root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / "backend"))
+from atmosphere import harmonize_layer, LAYER_HARMONIZATION_VERSION
 ids = set()
 for manifest in sys.argv[1:]:
     records = json.loads(Path(manifest).read_text(encoding="utf8"))
@@ -19,8 +21,14 @@ for job_id in sorted(ids):
     alpha = np.asarray(Image.open(folder / "mask.png"))
     editable = np.asarray(Image.open(folder / "editable-sky.png"))
     assert np.all(editable[alpha >= 2] == 0), "Subject pixels entered the edit mask"
-    for metadata in sorted(folder.glob("styles/*/metadata.json")):
+    for metadata in sorted((folder / "styles").rglob("metadata.json")):
+        meta = json.loads(metadata.read_text(encoding="utf8"))
         target = metadata.parent
+        style = meta["style"]
+        treatment = meta.get("metrics", {}).get("layerHarmonizationVersion", "unchanged")
+        assert treatment in ("unchanged", LAYER_HARMONIZATION_VERSION), "Unknown RGB treatment"
+        expected_source = source if treatment == "unchanged" else np.asarray(
+            harmonize_layer(Image.fromarray(source, "RGB"), style))
         native = np.asarray(Image.open(target / "background.webp").convert("RGB"))
         padded = np.asarray(Image.open(target / "render-background.webp"))
         h, w = source.shape[:2]
@@ -28,14 +36,16 @@ for job_id in sorted(ids):
         assert np.array_equal(padded[py:py+h, px:px+w], native), "Padded/native RGB differ"
         subject = np.asarray(Image.open(target / "subject.png"))
         assert np.array_equal(subject[..., 3], alpha), "Subject alpha changed"
-        assert np.array_equal(subject[alpha == 255, :3], source[alpha == 255]), "Opaque subject changed"
+        assert np.array_equal(subject[alpha == 255, :3], expected_source[alpha == 255]), "Opaque subject differs from declared RGB curve"
         visible_non_sky = (editable == 0) & (alpha == 0)
-        assert np.array_equal(native[visible_non_sky], source[visible_non_sky]), "Visible non-sky replaced"
+        assert np.array_equal(native[visible_non_sky], expected_source[visible_non_sky]), "Visible non-sky differs from declared RGB curve"
         scene = Image.open(target / "render-scene.png").convert("RGBA")
         sky = Image.open(target / "render-sky.webp").convert("RGBA")
         combined = np.asarray(Image.alpha_composite(sky, scene).convert("RGB"))
         assert np.array_equal(combined, padded), "Dynamic layers disagree with flattened background"
-        report.append({"id": job_id, "style": target.name,
+        report.append({"id": job_id, "style": style,
+                       "atmosphereVersion": meta.get("atmosphereVersion", "original"),
+                       "rgbTreatment": treatment,
                        "protectedNonSkyPixels": int(visible_non_sky.sum()),
                        "protectedOpaqueSubjectPixels": int((alpha == 255).sum()),
                        "nativeAndPaddedExact": True, "layersAndFlattenedExact": True})

@@ -5,18 +5,20 @@ from __future__ import annotations
 import gc
 import hashlib
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
 from PIL import Image
+from atmosphere import grade_sky, SKY_GRADE_VERSION
 
 MODEL_ID = "stable-diffusion-v1-5/stable-diffusion-inpainting"
 MODEL_REVISION = "8a4288a76071f7280aedbdb3253bdb9e9d5d84bb"
 
 STYLES = {
-    "dreamy-pink": "photorealistic dreamy lavender and soft pink cloudscape, fluffy natural clouds filling the frame, soft ethereal light",
+    "dreamy-pink": "close-up photograph of soft rose pink and lavender cumulus cloud formations, airy pastel clouds covering the sky from edge to edge, textured glowing cloud edges, pale peach light, looking straight upward",
     "golden-hour": "photorealistic golden hour sky, warm gold and peach clouds filling the frame, sunlit cloud texture",
-    "cinematic-night": "astrophotography looking straight upward at the zenith, dark navy blue night sky filling the frame, scattered subtle white stars and thin cool moonlit clouds, indigo cinematic atmosphere",
+    "cinematic-night": "photorealistic blue hour evening sky, calm cobalt and slate blue cloud layers, soft luminous twilight clouds, restrained atmospheric contrast, natural dusk light, sky filling the entire frame",
 }
 
 _pipeline = None
@@ -50,9 +52,12 @@ def _sky_only(generated: Image.Image, style: str) -> Image.Image:
     h = round(generated.height * ratio)
     w = round(h * generated.width / generated.height)
     x = (generated.width - w) // 2
-    sky = generated.crop((x, 0, x + w, h)).resize(generated.size, Image.Resampling.LANCZOS)
-    if style == "dreamy-pink":
-        return sky
+    crop = generated.crop((x, 0, x + w, h))
+    if style != "golden-hour":
+        # Grade at the actual crop resolution before enlarging it. White
+        # noise/star islands are never extracted or boosted into a starfield.
+        return grade_sky(crop, style).resize(generated.size, Image.Resampling.LANCZOS)
+    sky = crop.resize(generated.size, Image.Resampling.LANCZOS)
     rgb = np.asarray(sky.convert("RGB"), dtype=np.float32)
     luma = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
     if style == "golden-hour":
@@ -60,15 +65,9 @@ def _sky_only(generated: Image.Image, style: str) -> Image.Image:
         warm = np.stack((45 + luma * 0.95, 20 + luma * 0.74, 18 + luma * 0.52), axis=-1)
         graded = warm * 0.85 + rgb * 0.15
         return Image.fromarray(np.uint8(np.clip(graded, 0, 255)), "RGB")
-    # The small checkpoint often adds an orange horizon even for a night prompt.
-    # Keep its generated cloud/star texture and grade it cool.
-    graded = np.stack((5 + luma * 0.25, 12 + luma * 0.38, 32 + luma * 0.64), axis=-1)
-    stars = np.clip((luma - 185) / 55, 0, 1)[..., None] * 0.7
-    graded = graded * (1 - stars) + luma[..., None] * stars
-    return Image.fromarray(np.uint8(np.clip(graded, 0, 255)), "RGB")
 
 
-def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.Image, Image.Image, dict]:
+def restyle(source: Image.Image, mask: Image.Image, style: str, *, artifact_dir: Path | None = None) -> tuple[Image.Image, Image.Image, dict]:
     """Return subject-free generated background and original-subject composite."""
     if style not in STYLES:
         raise ValueError("Unknown background style.")
@@ -96,7 +95,9 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
         "duplicate subject, painting, cartoon, text, logo, artifacts"
     )
     if style == "cinematic-night":
-        negative += ", sunrise, sunset, orange, yellow, brown, desert, daytime, sun"
+        negative += ", stars, starfield, galaxy, milky way, astrophotography, glitter, speckles, grain, noise, neon, orange sun"
+    elif style == "dreamy-pink":
+        negative += ", gray sky, storm, dull blue, grain, noise, oversaturated magenta"
     start = time.perf_counter()
     model_was_loaded = _pipeline is not None
     load_seconds = 0.0
@@ -127,7 +128,11 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    generated = _sky_only(generated.convert("RGB"), style).resize(source.size, Image.Resampling.LANCZOS)
+    generated = generated.convert("RGB")
+    if artifact_dir is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        generated.save(artifact_dir / "model-sky-raw.png")
+    generated = _sky_only(generated, style).resize(source.size, Image.Resampling.LANCZOS)
     background = generated
     composite = Image.composite(source, background, mask)
     return background, composite, {
@@ -137,6 +142,7 @@ def restyle(source: Image.Image, mask: Image.Image, style: str) -> tuple[Image.I
         "modelWasLoaded": model_was_loaded,
         "modelSize": list(target), "seed": seed,
         "modelRevision": MODEL_REVISION,
+        "skyGradeVersion": SKY_GRADE_VERSION if style != "golden-hour" else "golden-hour-original",
         "steps": 22, "guidanceScale": 9.0, "strength": 1.0,
         "skyCropFraction": 0.35, "prompt": prompt, "negativePrompt": negative,
     }

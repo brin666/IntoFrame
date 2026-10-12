@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { resolve, relative, sep } from "node:path";
 
 const publicRoot = resolve("public");
@@ -60,5 +60,14 @@ const report = { samples: [...ids], styles: manifest.samples.length * 3, resourc
   publicMiB: Number((files.reduce((sum,path)=>sum+statSync(path).size,0)/1024/1024).toFixed(2)),
   movieBytes: statSync(mp4).size, hashes,
 };
-writeFileSync(resolve(publicRoot,"samples/asset-hashes.json"),JSON.stringify(report,null,2));
+const inventory = resolve(publicRoot,"samples/asset-hashes.json");
+if (process.argv.includes("--update-hashes")) {
+  writeFileSync(inventory,JSON.stringify(report,null,2));
+} else {
+  const saved = JSON.parse(readFileSync(inventory,"utf8"));
+  assert.deepEqual(hashes,saved.hashes,"Packaged media differs from the saved submission inventory");
+  assert.equal(report.movieBytes,saved.movieBytes,"Submitted video size changed");
+}
+mkdirSync(resolve("screenshots"),{recursive:true});
+writeFileSync(resolve("screenshots/submission-asset-check.json"),JSON.stringify(report,null,2));
 console.log(`Submission assets: ${ids.size} examples, ${paths.size} linked resources, ${report.publicMiB} MiB; MP4 present.`);

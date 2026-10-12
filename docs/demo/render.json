@@ -1,0 +1,11 @@
+{
+  "output": "public/demo/IntoFrame-demo.mp4",
+  "smoke": false,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "durationInFrames": 1890,
+  "bytes": 6014065,
+  "sha256": "43ad44dbea3ac6b1b8a7be10862405e7215222d90758870691ba80b135aca0c7",
+  "seconds": 148.195
+}

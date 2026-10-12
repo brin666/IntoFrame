@@ -1,0 +1,230 @@
+{
+  "base": "http://127.0.0.1:5198",
+  "checks": [
+    {
+      "name": "Gallery contains four actual sample photos",
+      "passed": true
+    },
+    {
+      "name": "tower: native depth mesh ready",
+      "passed": true
+    },
+    {
+      "name": "tower: Before uses original subject",
+      "passed": true
+    },
+    {
+      "name": "tower/dreamy-pink: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "tower/dreamy-pink: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "tower/golden-hour: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "tower/golden-hour: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "tower/cinematic-night: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "tower/cinematic-night: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "tower: six-second reveal can replay",
+      "passed": true
+    },
+    {
+      "name": "tower: reveal does not contaminate PNG",
+      "passed": true
+    },
+    {
+      "name": "tower: real drag controls virtual camera",
+      "passed": true
+    },
+    {
+      "name": "tower: release resumes bounded drift",
+      "passed": true
+    },
+    {
+      "name": "portrait: native depth mesh ready",
+      "passed": true
+    },
+    {
+      "name": "portrait: Before uses original subject",
+      "passed": true
+    },
+    {
+      "name": "portrait/dreamy-pink: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "portrait/dreamy-pink: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "portrait/golden-hour: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "portrait/golden-hour: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "portrait/cinematic-night: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "portrait/cinematic-night: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "portrait: six-second reveal can replay",
+      "passed": true
+    },
+    {
+      "name": "portrait: reveal does not contaminate PNG",
+      "passed": true
+    },
+    {
+      "name": "portrait: real drag controls virtual camera",
+      "passed": true
+    },
+    {
+      "name": "portrait: release resumes bounded drift",
+      "passed": true
+    },
+    {
+      "name": "dog: native depth mesh ready",
+      "passed": true
+    },
+    {
+      "name": "dog: Before uses original subject",
+      "passed": true
+    },
+    {
+      "name": "dog/dreamy-pink: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "dog/dreamy-pink: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "dog/golden-hour: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "dog/golden-hour: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "dog/cinematic-night: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "dog/cinematic-night: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "dog: six-second reveal can replay",
+      "passed": true
+    },
+    {
+      "name": "dog: reveal does not contaminate PNG",
+      "passed": true
+    },
+    {
+      "name": "dog: real drag controls virtual camera",
+      "passed": true
+    },
+    {
+      "name": "dog: release resumes bounded drift",
+      "passed": true
+    },
+    {
+      "name": "rocket: native depth mesh ready",
+      "passed": true
+    },
+    {
+      "name": "rocket: Before uses original subject",
+      "passed": true
+    },
+    {
+      "name": "rocket/dreamy-pink: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "rocket/dreamy-pink: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "rocket/golden-hour: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "rocket/golden-hour: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "rocket/cinematic-night: matching packaged subject",
+      "passed": true
+    },
+    {
+      "name": "rocket/cinematic-night: separate generated-sky scene",
+      "passed": true
+    },
+    {
+      "name": "rocket: six-second reveal can replay",
+      "passed": true
+    },
+    {
+      "name": "rocket: reveal does not contaminate PNG",
+      "passed": true
+    },
+    {
+      "name": "rocket: real drag controls virtual camera",
+      "passed": true
+    },
+    {
+      "name": "rocket: release resumes bounded drift",
+      "passed": true
+    },
+    {
+      "name": "All sample interactions run without backend inference",
+      "passed": true,
+      "evidence": []
+    },
+    {
+      "name": "Remotion film plays and pauses",
+      "passed": true
+    },
+    {
+      "name": "Full MP4 is served",
+      "passed": true
+    },
+    {
+      "name": "Served MP4 exactly matches committed artifact",
+      "passed": true
+    },
+    {
+      "name": "Old isolated experiment entry remains accessible",
+      "passed": true
+    },
+    {
+      "name": "No JavaScript errors",
+      "passed": true,
+      "evidence": []
+    }
+  ],
+  "completed": true,
+  "failure": null,
+  "passed": true
+}

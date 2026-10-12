@@ -50,6 +50,8 @@ The final production frontend passed55 browser checks: all four bundled native m
 
 Actual rendered frames are available in [the film contact sheet](demo/film-storyboard.jpg). Title escapes and portrait-panel layout found during review were fixed and the full film was rendered again. Earlier diagnostic movies remain local/ignored and are not part of the submitted package.
 
+Clean checkout verification used an isolated Git worktree of the packaged commit, with no local model files or Python environment: `npm ci`, `npm run build` and resource checks passed. Its frontend-only Vite preview on port5198 passed the same55 checks and made zero `/api/` calls. The original local preview remains on port5190. The published [browser acceptance record](demo/clean-checkout-browser.json) and [render record](demo/render.json) contain only safe demo metadata. Run `demo:check` normally to validate the saved asset inventory without modifying tracked files; `demo:check -- --update-hashes` explicitly refreshes that inventory after intentionally replacing public samples.
+
 The public artifacts omit user uploads with unverified rights, raw local job logs, caches, model weights and secrets. The source code's existing license status is recorded in [THIRD_PARTY](THIRD_PARTY.md); the attributed tower derivatives, recording and film have separate CC BY-SA terms.
 
 ## Evidence commands

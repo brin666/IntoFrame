@@ -13,6 +13,7 @@ export interface SampleSourceCredit {
 export interface SubmissionSample {
   id: string;
   title: string;
+  category?: string;
   result: Result;
   depth: DepthResult;
   styles: Record<StyleId, RestyleResult>;
@@ -32,29 +33,47 @@ export interface FilmShot {
   styleId: StyleId;
   styleLabel: string;
   input: PhotoRevealProps;
+  compositeUrl: string;
   thumbnailUrl: string;
+  sourceUrl: string;
+  maskUrl: string;
+  depthUrl: string;
+  width: number;
+  height: number;
   source: SampleSourceCredit;
 }
 
-export interface SubmissionFilmProps extends Record<string, unknown> {
-  pink: FilmShot;
-  blueHour: FilmShot;
-  portrait: FilmShot;
-  dog: FilmShot;
-  rocket: FilmShot;
-  interactionVideoUrl: string;
+export interface ArchitectureFilmCase {
+  sampleId: string;
+  title: string;
+  defaultStyle: StyleId;
+  source: SampleSourceCredit;
+  width: number;
+  height: number;
+  sourceUrl: string;
+  maskUrl: string;
+  depthUrl: string;
+  thumbnailUrl: string;
+  styles: Record<StyleId, FilmShot>;
 }
+
+export interface SubmissionFilmProps extends Record<string, unknown> {
+  architecture: ArchitectureFilmCase[];
+  workflowVideoUrl: string;
+  architectureVideoUrl: string;
+}
+
+const STYLE_IDS: StyleId[] = ["dreamy-pink", "golden-hour", "cinematic-night"];
 
 const styleLabels: Record<StyleId, string> = {
   "dreamy-pink": "Dreamy Pink",
   "golden-hour": "Golden Hour",
-  "cinematic-night": "Blue Hour",
+  "cinematic-night": "Cinematic Night",
 };
 
 /**
- * Resolve only assets that belong to the public demo bundle. Keeping this
- * guard in front of Remotion's staticFile() prevents manifest URLs from
- * escaping public/samples or public/demo in the browser and render pipeline.
+ * Resolve only assets that belong to the public demo bundle. This also keeps
+ * the same Vite/Remotion static-file URL working in the browser Player and CLI.
  */
 export function resolveSubmissionAsset(input: string): string {
   if (typeof input !== "string" || input.trim() === "") {
@@ -83,6 +102,10 @@ function resolveSampleAsset(input: string, sampleId: string): string {
   return resolveSubmissionAsset(normalized);
 }
 
+function isStyleId(value: unknown): value is StyleId {
+  return typeof value === "string" && STYLE_IDS.includes(value as StyleId);
+}
+
 export function parseSubmissionManifest(value: unknown): SubmissionManifest {
   if (!value || typeof value !== "object") {
     throw new Error("The sample manifest is missing or invalid.");
@@ -91,44 +114,62 @@ export function parseSubmissionManifest(value: unknown): SubmissionManifest {
   if (manifest.version !== 1 || !Array.isArray(manifest.samples)) {
     throw new Error("The sample manifest must use version 1 and include samples.");
   }
-
-  const samples = manifest.samples as SubmissionSample[];
-  if (!samples.length) {
+  if (!manifest.samples.length) {
     throw new Error("The sample manifest is still empty.");
   }
-  for (const sample of samples) {
+
+  const ids = new Set<string>();
+  for (const value of manifest.samples as unknown[]) {
+    if (!value || typeof value !== "object") {
+      throw new Error("The sample manifest contains an incomplete sample.");
+    }
+    const sample = value as SubmissionSample;
     if (
-      !sample ||
       typeof sample.id !== "string" ||
       !/^[a-z0-9-]+$/i.test(sample.id) ||
+      ids.has(sample.id) ||
       typeof sample.title !== "string" ||
       !sample.result ||
       !sample.depth ||
       !sample.styles ||
-      !sample.source
+      !sample.source ||
+      !isStyleId(sample.defaultStyle)
     ) {
-      throw new Error("The sample manifest contains an incomplete sample.");
+      throw new Error("The sample manifest contains an incomplete or duplicate sample.");
+    }
+    ids.add(sample.id);
+    if (
+      !Number.isSafeInteger(sample.result.width) ||
+      sample.result.width <= 0 ||
+      !Number.isSafeInteger(sample.result.height) ||
+      sample.result.height <= 0 ||
+      sample.depth.width !== sample.result.width ||
+      sample.depth.height !== sample.result.height
+    ) {
+      throw new Error(`${sample.title} has inconsistent native image dimensions.`);
+    }
+    if ([sample.source.url, sample.source.author, sample.source.license, sample.source.licenseUrl].some((part) => typeof part !== "string" || !part.trim())) {
+      throw new Error(`${sample.title} is missing a source credit.`);
+    }
+    for (const styleId of STYLE_IDS) {
+      const style = sample.styles[styleId];
+      if (!style || style.style !== styleId || style.jobId !== sample.result.id) {
+        throw new Error(`${sample.title} is missing its ${styleLabels[styleId]} style result.`);
+      }
     }
   }
-  return { version: 1, samples };
+
+  return { version: 1, samples: manifest.samples as SubmissionSample[] };
 }
 
-function getSample(manifest: SubmissionManifest, id: string): SubmissionSample | undefined {
-  return manifest.samples.find((sample) => sample.id === id);
-}
-
-function chooseFeatureSample(manifest: SubmissionManifest): SubmissionSample {
-  const feature = getSample(manifest, "tower") ?? getSample(manifest, "rocket");
-  if (!feature) {
-    throw new Error("The demo needs a tower sample, or a rocket fallback.");
-  }
-  return feature;
-}
-
-function requireSample(manifest: SubmissionManifest, id: string): SubmissionSample {
-  const sample = getSample(manifest, id);
-  if (!sample) throw new Error(`The ${id} sample is missing from the manifest.`);
-  return sample;
+function isArchitectureSample(sample: SubmissionSample): boolean {
+  const category = sample.category?.trim().toLowerCase();
+  return (
+    category === "architecture" ||
+    category === "building" ||
+    category === "landmark" ||
+    ["tower", "taipei", "flatiron", "qutub"].includes(sample.id.toLowerCase())
+  );
 }
 
 function revealPose(sample: SubmissionSample): Pick<PhotoRevealProps, "zoom" | "shiftX" | "shiftY"> {
@@ -156,48 +197,81 @@ function revealPose(sample: SubmissionSample): Pick<PhotoRevealProps, "zoom" | "
   return { zoom, shiftX, shiftY };
 }
 
-export function createFilmShot(sample: SubmissionSample, styleId: StyleId): FilmShot {
+function createFilmShot(sample: SubmissionSample, styleId: StyleId): FilmShot {
   const style = sample.styles[styleId];
   if (!style) throw new Error(`${sample.title} has no ${styleLabels[styleId]} result.`);
-  for (const dimension of [sample.result.width, sample.result.height]) {
-    if (!Number.isSafeInteger(dimension) || dimension <= 0) {
-      throw new Error(`${sample.title} has invalid native image dimensions.`);
-    }
+  const { width, height } = sample.result;
+  if (
+    !Number.isSafeInteger(width) || width <= 0 ||
+    !Number.isSafeInteger(height) || height <= 0 ||
+    !Number.isFinite(sample.result.composition.scale) || sample.result.composition.scale <= 0
+  ) {
+    throw new Error(`${sample.title} has invalid native image dimensions or composition values.`);
   }
   const pose = revealPose(sample);
+  const sourceUrl = resolveSampleAsset(sample.result.sourceUrl, sample.id);
   return {
     sampleId: sample.id,
     sampleTitle: sample.title,
     styleId,
     styleLabel: styleLabels[styleId],
     input: {
-      sourceUrl: resolveSampleAsset(sample.result.sourceUrl, sample.id),
+      sourceUrl,
       backgroundUrl: resolveSampleAsset(style.backgroundUrl, sample.id),
       subjectUrl: resolveSampleAsset(style.subjectUrl, sample.id),
-      width: sample.result.width,
-      height: sample.result.height,
+      width,
+      height,
       ...pose,
     },
+    compositeUrl: resolveSampleAsset(style.compositeUrl, sample.id),
     thumbnailUrl: resolveSampleAsset(sample.thumbnailUrl, sample.id),
+    sourceUrl,
+    maskUrl: resolveSampleAsset(sample.result.maskUrl, sample.id),
+    depthUrl: resolveSampleAsset(sample.depth.depthUrl, sample.id),
+    width,
+    height,
     source: sample.source,
   };
 }
 
-export function createSubmissionFilmProps(
-  manifest: SubmissionManifest,
-): SubmissionFilmProps {
-  const feature = chooseFeatureSample(manifest);
-  const portrait = requireSample(manifest, "portrait");
-  const dog = requireSample(manifest, "dog");
-  const rocket = requireSample(manifest, "rocket");
+function createArchitectureCase(sample: SubmissionSample): ArchitectureFilmCase {
+  // The sample metadata currently marks Taipei Golden Hour as its default,
+  // but that variant has visible repeated bands; use a reviewed output instead.
+  const defaultStyle = sample.id === "taipei" ? "dreamy-pink" : sample.defaultStyle;
+  const styles = Object.fromEntries(
+    STYLE_IDS.map((styleId) => [styleId, createFilmShot(sample, styleId)]),
+  ) as Record<StyleId, FilmShot>;
   return {
-    pink: createFilmShot(feature, "dreamy-pink"),
-    // Keep one source photo for both style chapters to make the comparison clear.
-    blueHour: createFilmShot(portrait, "cinematic-night"),
-    portrait: createFilmShot(portrait, "golden-hour"),
-    dog: createFilmShot(dog, "dreamy-pink"),
-    rocket: createFilmShot(rocket, "golden-hour"),
-    interactionVideoUrl: resolveSubmissionAsset("demo/interaction.webm"),
+    sampleId: sample.id,
+    title: sample.title,
+    defaultStyle,
+    source: sample.source,
+    width: sample.result.width,
+    height: sample.result.height,
+    sourceUrl: resolveSampleAsset(sample.result.sourceUrl, sample.id),
+    maskUrl: resolveSampleAsset(sample.result.maskUrl, sample.id),
+    depthUrl: resolveSampleAsset(sample.depth.depthUrl, sample.id),
+    thumbnailUrl: resolveSampleAsset(sample.thumbnailUrl, sample.id),
+    styles,
+  };
+}
+
+export function createSubmissionFilmProps(manifest: SubmissionManifest): SubmissionFilmProps {
+  const candidates = manifest.samples.filter(isArchitectureSample);
+  const towerIndex = candidates.findIndex((sample) => sample.id === "tower");
+  if (towerIndex > 0) {
+    const [tower] = candidates.splice(towerIndex, 1);
+    candidates.unshift(tower);
+  }
+  if (candidates.length < 3) {
+    throw new Error("The architecture film needs at least three building examples.");
+  }
+  // The 150-second edit is timed for a hero plus up to three additional cases.
+  const architecture = candidates.slice(0, 4).map(createArchitectureCase);
+  return {
+    architecture,
+    workflowVideoUrl: resolveSubmissionAsset("demo/workflow.webm"),
+    architectureVideoUrl: resolveSubmissionAsset("demo/architecture-interaction.webm"),
   };
 }
 
@@ -209,14 +283,17 @@ export function getManifestSampleLink(sampleId: string): string {
 }
 
 export function getFilmAssetPaths(props: SubmissionFilmProps): string[] {
-  const shots = [props.pink, props.blueHour, props.portrait, props.dog, props.rocket];
-  return [
-    ...shots.flatMap((shot) => [
-      shot.input.sourceUrl,
-      shot.input.backgroundUrl,
-      shot.input.subjectUrl,
-      shot.thumbnailUrl,
-    ]),
-    props.interactionVideoUrl,
-  ];
+  const paths = new Set<string>([props.workflowVideoUrl, props.architectureVideoUrl]);
+  for (const item of props.architecture) {
+    paths.add(item.sourceUrl);
+    paths.add(item.maskUrl);
+    paths.add(item.depthUrl);
+    paths.add(item.thumbnailUrl);
+    for (const shot of Object.values(item.styles)) {
+      paths.add(shot.input.backgroundUrl);
+      paths.add(shot.input.subjectUrl);
+      paths.add(shot.compositeUrl);
+    }
+  }
+  return [...paths];
 }

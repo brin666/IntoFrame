@@ -1,0 +1,173 @@
+{
+  "actualBrowserRecording": true,
+  "workflow": {
+    "durationFrames": 900,
+    "fps": 30,
+    "actualModelInference": true,
+    "responseInterception": false,
+    "responseStatuses": {
+      "202": 3,
+      "200": 14
+    },
+    "editing": "Processing waits shortened by cuts; retained actions play at original speed",
+    "downloadedPngBytes": 644159
+  },
+  "interaction": {
+    "durationFrames": 480,
+    "fps": 30,
+    "samples": [
+      "tower",
+      "qutub"
+    ],
+    "apiRequests": [],
+    "states": [
+      {
+        "sample": "tower",
+        "label": "center",
+        "at": 812,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "autonomous",
+          "cameraTargetX": "0.00488",
+          "leftTravel": "0.02821",
+          "rightTravel": "0.02821",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.00430",
+          "skyZ": "-0.8",
+          "targetGap": "4.14",
+          "nearestZ": "1.34000"
+        }
+      },
+      {
+        "sample": "tower",
+        "label": "right-drag",
+        "at": 2054,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "drag",
+          "cameraTargetX": "-0.02691",
+          "leftTravel": "0.02821",
+          "rightTravel": "0.02821",
+          "autoTravelRatio": "0.35",
+          "cameraX": "-0.02691",
+          "skyZ": "-0.8",
+          "targetGap": "4.14",
+          "nearestZ": "1.34000"
+        }
+      },
+      {
+        "sample": "tower",
+        "label": "left-drag",
+        "at": 3358,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "drag",
+          "cameraTargetX": "0.02725",
+          "leftTravel": "0.02821",
+          "rightTravel": "0.02821",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.02725",
+          "skyZ": "-0.8",
+          "targetGap": "4.14",
+          "nearestZ": "1.34000"
+        }
+      },
+      {
+        "sample": "tower",
+        "label": "released",
+        "at": 8407,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "autonomous",
+          "cameraTargetX": "0.00591",
+          "leftTravel": "0.02821",
+          "rightTravel": "0.02821",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.00640",
+          "skyZ": "-0.8",
+          "targetGap": "4.14",
+          "nearestZ": "1.34000"
+        }
+      },
+      {
+        "sample": "qutub",
+        "label": "center",
+        "at": 804,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "autonomous",
+          "cameraTargetX": "0.00537",
+          "leftTravel": "0.03141",
+          "rightTravel": "0.03141",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.00473",
+          "skyZ": "-0.8",
+          "targetGap": "4.19",
+          "nearestZ": "1.24120"
+        }
+      },
+      {
+        "sample": "qutub",
+        "label": "right-drag",
+        "at": 2041,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "drag",
+          "cameraTargetX": "-0.02996",
+          "leftTravel": "0.03141",
+          "rightTravel": "0.03141",
+          "autoTravelRatio": "0.35",
+          "cameraX": "-0.02996",
+          "skyZ": "-0.8",
+          "targetGap": "4.19",
+          "nearestZ": "1.24120"
+        }
+      },
+      {
+        "sample": "qutub",
+        "label": "left-drag",
+        "at": 3395,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "drag",
+          "cameraTargetX": "0.03034",
+          "leftTravel": "0.03141",
+          "rightTravel": "0.03141",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.03034",
+          "skyZ": "-0.8",
+          "targetGap": "4.19",
+          "nearestZ": "1.24120"
+        }
+      },
+      {
+        "sample": "qutub",
+        "label": "released",
+        "at": 8404,
+        "data": {
+          "reveal": "idle",
+          "subjectGeometry": "depth-mesh",
+          "motionMode": "autonomous",
+          "cameraTargetX": "0.00679",
+          "leftTravel": "0.03141",
+          "rightTravel": "0.03141",
+          "autoTravelRatio": "0.35",
+          "cameraX": "0.00733",
+          "skyZ": "-0.8",
+          "targetGap": "4.19",
+          "nearestZ": "1.24120"
+        }
+      }
+    ],
+    "editing": "Two eight-second captures, normal speed. Cursor follows actual pointer events; no camera override."
+  },
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+}

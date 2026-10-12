@@ -33,12 +33,8 @@ MAX_SIDE = 1024
 POLL_SECONDS = 1.0
 POLL_LIMIT = 900
 
-UNSPLASH_LICENSE = "Unsplash License"
-UNSPLASH_LICENSE_URL = "https://unsplash.com/license"
-
-# CDN URLs identify the exact Unsplash source photos used by the local
-# evaluation scripts. The photographer name was not retained in those local
-# downloads, so the manifest says so rather than guessing.
+# The public submission contains only these four verified architecture sources.
+PUBLICATION_IDS = ("tower", "taipei", "flatiron", "qutub")
 SAMPLE_SOURCES: dict[str, dict[str, Any]] = {
     "tower": {
         "title": "Big Ben, London",
@@ -46,6 +42,8 @@ SAMPLE_SOURCES: dict[str, dict[str, Any]] = {
         "defaultStyle": "dreamy-pink",
         "input": ROOT / "screenshots" / "submission-inputs" / "tower.jpg",
         "inputUrl": "https://upload.wikimedia.org/wikipedia/commons/0/0e/BigBenLondon.jpg",
+        "inputSha256": "fb4e94ae7b3ef3b6c029def753641d706f8cf62685bf583ed96e25f57997c244",
+        "downloadSha256": "fb4e94ae7b3ef3b6c029def753641d706f8cf62685bf583ed96e25f57997c244",
         "source": {
             "url": "https://commons.wikimedia.org/wiki/File:BigBenLondon.jpg",
             "author": "Massimo Catarinella",
@@ -53,43 +51,51 @@ SAMPLE_SOURCES: dict[str, dict[str, Any]] = {
             "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
         },
     },
-    "portrait": {
-        "title": "Coastal portrait",
-        "category": "person",
+    "taipei": {
+        "title": "Taipei 101 in blue sky",
+        "category": "architecture",
         "defaultStyle": "dreamy-pink",
-        "input": ROOT / "backend" / "data" / "sky-inputs" / "outdoor-person.png",
-        "inputUrl": "https://images.unsplash.com/photo-1589869024358-6874d0915b82?w=1600&q=85&fit=max",
+        "input": ROOT / "screenshots" / "submission-inputs" / "taipei.jpg",
+        "inputUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Taipei_101_in_blue_sky.jpg",
+        "inputSha256": "934e130522eb4bbf8e6a38900fcf9b5ac78c40969715df789b875c19798d0e60",
+        "downloadSha256": "934e130522eb4bbf8e6a38900fcf9b5ac78c40969715df789b875c19798d0e60",
         "source": {
-            "url": "https://images.unsplash.com/photo-1589869024358-6874d0915b82?w=1600&q=85&fit=max",
-            "author": "Not identified in the original download record",
-            "license": UNSPLASH_LICENSE,
-            "licenseUrl": UNSPLASH_LICENSE_URL,
+            "url": "https://commons.wikimedia.org/wiki/File:Taipei_101_in_blue_sky.jpg",
+            "author": "Pauloleong2002",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
         },
     },
-    "dog": {
-        "title": "Golden retriever",
-        "category": "pet",
-        "defaultStyle": "golden-hour",
-        "input": ROOT / "backend" / "data" / "edge-repair-inputs" / "dog.png",
-        "inputUrl": "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1600&q=90&fm=jpg&fit=max",
+    "flatiron": {
+        "title": "Flatiron Building, New York",
+        "category": "architecture",
+        "defaultStyle": "dreamy-pink",
+        "input": ROOT / "screenshots" / "submission-inputs" / "flatiron.png",
+        "downloadPath": ROOT / "screenshots" / "submission-inputs" / "flatiron.jpg",
+        "inputUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c1/The_Flatiron_Building_%287%29.jpg",
+        "inputSha256": "c070fbf16df4ed6284533e6ec25ca9b53d1278221de57cc3a28d9ae9a4cd697e",
+        "downloadSha256": "cd9eef20a7ce62596a7ba5be62914636b7bb0a470d8839646f73b5c56532ba05",
         "source": {
-            "url": "https://images.unsplash.com/photo-1552053831-71594a27632d",
-            "author": "Not identified in the original download record",
-            "license": UNSPLASH_LICENSE,
-            "licenseUrl": UNSPLASH_LICENSE_URL,
+            "url": "https://commons.wikimedia.org/wiki/File:The_Flatiron_Building_(7).jpg",
+            "author": "PortableNYCTours",
+            "license": "CC BY-SA 4.0",
+            "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
         },
     },
-    "rocket": {
-        "title": "Space Shuttle Endeavour launch",
-        "category": "rocket",
+    "qutub": {
+        "title": "Qutub Minar",
+        "category": "architecture",
         "defaultStyle": "dreamy-pink",
-        "inputUrl": "https://images-assets.nasa.gov/image/KSC-07PD-2256/KSC-07PD-2256~medium.jpg",
-        "input": EVIDENCE / "inputs" / "nasa-shuttle-launch.jpg",
+        "input": ROOT / "screenshots" / "submission-inputs" / "qutub.png",
+        "downloadPath": ROOT / "screenshots" / "submission-inputs" / "qutub.jpg",
+        "inputUrl": "https://upload.wikimedia.org/wikipedia/commons/c/ca/Qutub_Minar_%2854342718682%29.jpg",
+        "inputSha256": "1543a09081263cb55441ce5d2b9e88ac259f930a82715b93b51c1861ff24d087",
+        "downloadSha256": "d37f516339f2f4429ac042b33bc71c90161a85f623276c342bedadf3c4de617b",
         "source": {
-            "url": "https://images.nasa.gov/details/KSC-07PD-2256",
-            "author": "NASA",
-            "license": "NASA Images and Media Usage Guidelines",
-            "licenseUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+            "url": "https://commons.wikimedia.org/wiki/File:Qutub_Minar_(54342718682).jpg",
+            "author": "Joe deSousa (Mustang Joe)",
+            "license": "CC0 1.0",
+            "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
         },
     },
 }
@@ -116,6 +122,14 @@ ALLOWED_STYLE_ASSETS = {
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def require_managed_child(path: Path, parent: Path, allowed_names: set[str]) -> Path:
+    resolved_parent = parent.resolve()
+    resolved_path = path.resolve()
+    if resolved_path.parent != resolved_parent or resolved_path.name not in allowed_names:
+        raise RuntimeError(f"Refusing recursive removal outside the managed sample directory: {resolved_path}")
+    return resolved_path
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -176,13 +190,29 @@ def poll_json(base: str, path: str, evidence: dict[str, Any], key: str) -> dict[
 
 def prepare_input(source: dict[str, Any], input_path: Path) -> tuple[Path, dict[str, Any]]:
     input_path.parent.mkdir(parents=True, exist_ok=True)
-    if not input_path.exists() and source.get("inputUrl"):
-        with urllib.request.urlopen(source["inputUrl"], timeout=90) as response:
-            input_path.write_bytes(response.read())
-    if not input_path.is_file():
-        raise FileNotFoundError(f"Expected original input is missing: {input_path}")
+    source_path = input_path
+    downloaded = False
+    if not input_path.exists():
+        source_path = Path(source.get("downloadPath", input_path))
+        if not source_path.is_absolute():
+            source_path = ROOT / source_path
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+    if not source_path.exists() and source.get("inputUrl"):
+        request = urllib.request.Request(
+            source["inputUrl"], headers={"User-Agent": "IntoFrame sample preparation/1.0"}
+        )
+        with urllib.request.urlopen(request, timeout=90) as response:
+            source_path.write_bytes(response.read())
+        downloaded = True
+    if not source_path.is_file():
+        raise FileNotFoundError(f"Expected original input is missing: {source_path}")
 
-    original = input_path.read_bytes()
+    original = source_path.read_bytes()
+    source_is_original = downloaded or source_path != input_path
+    expected_hash = source.get("downloadSha256" if source_is_original else "inputSha256")
+    if expected_hash and sha256(original) != expected_hash:
+        label = "source download" if source_is_original else "local source input"
+        raise RuntimeError(f"The {label} bytes do not match the verified {source['id']} source hash")
     with Image.open(io.BytesIO(original)) as opened:
         image = ImageOps.exif_transpose(opened)
         image.load()
@@ -200,6 +230,7 @@ def prepare_input(source: dict[str, Any], input_path: Path) -> tuple[Path, dict[
 
     info = {
         "originalInputSha256": sha256(original),
+        "sourceFile": str(source_path.relative_to(ROOT)).replace("\\", "/"),
         "preparedInputSha256": sha256(prepared.read_bytes()),
         "originalMode": original_mode,
         "preparedMode": Image.open(prepared).mode,
@@ -351,9 +382,9 @@ def generate_one(base: str, sample_id: str, source: dict[str, Any], replace: boo
     source_dir = PUBLIC / sample_id
     if source_dir.exists() and not replace:
         raise FileExistsError(f"{source_dir} already exists; pass --replace to regenerate it")
-    stage = EVIDENCE / "work" / sample_id
+    stage = PUBLIC / f".staging-{sample_id}"
     if stage.exists():
-        shutil.rmtree(stage)
+        shutil.rmtree(require_managed_child(stage, PUBLIC, {f".staging-{sample_id}"}))
     stage.mkdir(parents=True, exist_ok=True)
 
     files = copy_media(base, job_id, sample_id, urls, stage)
@@ -376,7 +407,7 @@ def generate_one(base: str, sample_id: str, source: dict[str, Any], replace: boo
     write_json(evidence_path, evidence)
 
     if source_dir.exists():
-        shutil.rmtree(source_dir)
+        shutil.rmtree(require_managed_child(source_dir, PUBLIC, set(PUBLICATION_IDS)))
     source_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(stage), str(source_dir))
 
@@ -386,19 +417,37 @@ def generate_one(base: str, sample_id: str, source: dict[str, Any], replace: boo
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--api-base", default="http://127.0.0.1:5190")
-    parser.add_argument("--include", default="tower,portrait,dog,rocket",
-                        help="comma-separated IDs: portrait,dog,rocket,tower")
-    parser.add_argument("--tower-input", type=Path)
-    parser.add_argument("--tower-source-url")
-    parser.add_argument("--tower-author")
-    parser.add_argument("--tower-license")
-    parser.add_argument("--tower-license-url")
+    parser.add_argument("--include", default=",".join(PUBLICATION_IDS),
+                        help="comma-separated architecture IDs: tower,taipei,flatiron,qutub")
     parser.add_argument("--replace", action="store_true",
                         help="replace the corresponding generated public sample directories")
+    parser.add_argument("--prune-legacy", action="store_true",
+                        help="keep only verified architecture records already present in the manifest; makes no API requests")
     args = parser.parse_args()
 
-    selected = [part.strip() for part in args.include.split(",") if part.strip()]
-    unknown = set(selected) - (set(SAMPLE_SOURCES) | {"tower"})
+    selected = list(dict.fromkeys(part.strip() for part in args.include.split(",") if part.strip()))
+    existing_manifest = PUBLIC / "manifest.json"
+    if args.prune_legacy:
+        if not existing_manifest.exists():
+            parser.error(f"cannot read {existing_manifest}")
+        try:
+            prior = json.loads(existing_manifest.read_text(encoding="utf-8-sig"))
+            samples = [
+                record for record in prior.get("samples", [])
+                if record.get("id") in PUBLICATION_IDS and (PUBLIC / record["id"]).is_dir()
+            ]
+        except (json.JSONDecodeError, OSError, AttributeError, TypeError):
+            parser.error(f"cannot read {existing_manifest}")
+        present = {record["id"] for record in samples}
+        missing = set(PUBLICATION_IDS) - present
+        if missing:
+            parser.error(f"cannot finalize manifest; missing generated samples: {', '.join(sorted(missing))}")
+        samples.sort(key=lambda record: PUBLICATION_IDS.index(record["id"]))
+        write_json(existing_manifest, {"version": 1, "samples": samples})
+        print(json.dumps({"manifest": "architecture-only", "samples": [record["id"] for record in samples]}), flush=True)
+        return 0
+
+    unknown = set(selected) - set(SAMPLE_SOURCES)
     if unknown:
         parser.error(f"unknown sample ids: {', '.join(sorted(unknown))}")
     if not args.replace:
@@ -407,29 +456,21 @@ def main() -> int:
             parser.error(f"sample directories already exist: {', '.join(existing)}; pass --replace to regenerate them")
 
     samples: list[dict[str, Any]] = []
-    existing_manifest = PUBLIC / "manifest.json"
     if existing_manifest.exists():
         try:
             prior = json.loads(existing_manifest.read_text(encoding="utf-8-sig"))
-            samples = [record for record in prior.get("samples", []) if record.get("id") not in selected]
+            samples = [
+                record for record in prior.get("samples", [])
+                if record.get("id") in PUBLICATION_IDS and record.get("id") not in selected
+            ]
         except (json.JSONDecodeError, OSError):
             parser.error(f"cannot read {existing_manifest}")
 
     for sample_id in selected:
         source = dict(SAMPLE_SOURCES[sample_id])
-        if sample_id == "tower":
-            if args.tower_input:
-                source["input"] = args.tower_input
-            if args.tower_source_url:
-                source["source"]["url"] = args.tower_source_url
-            if args.tower_author:
-                source["source"]["author"] = args.tower_author
-            if args.tower_license:
-                source["source"]["license"] = args.tower_license
-            if args.tower_license_url:
-                source["source"]["licenseUrl"] = args.tower_license_url
         record = generate_one(args.api_base, sample_id, source, args.replace)
         samples.append(record)
+        samples.sort(key=lambda item: PUBLICATION_IDS.index(item["id"]))
         write_json(existing_manifest, {"version": 1, "samples": samples})
         print(json.dumps({"sample": sample_id, "status": "published"}), flush=True)
 

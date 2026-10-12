@@ -11,9 +11,9 @@ npm ci
 npm run dev
 ```
 
-Open **http://127.0.0.1:5187/** and choose a real sample. The repository includes four precomputed examples, each with all three sky styles, original alpha and float32 depth. Samples, Before/After, the six-second transformation, spatial exploration and PNG download run from the included assets without backend requests. Uploading a new photo requires the local Python/CUDA backend below.
+Open **http://127.0.0.1:5187/** and choose a building: Big Ben, Taipei 101, Flatiron Building or Qutub Minar. Each includes three cached sky styles, original alpha and float32 depth. Samples, Before/After, the six-second transformation, spatial exploration and PNG download run from the included assets without backend requests. Uploading a new photo requires the local Python/CUDA backend below. Individual style failures remain documented in the asset guide.
 
-- **Complete demo film:** http://127.0.0.1:5187/demo.html — paused Remotion Player with play, scrub and MP4 download.
+- **2:30 demo film:** http://127.0.0.1:5187/demo.html — architecture examples, animated reveals and layer diagrams, real browser recordings, play, scrub and MP4 download.
 - **Submitted MP4:** [public/demo/IntoFrame-demo.mp4](public/demo/IntoFrame-demo.mp4).
 - **Sample assets and limitations:** [DEMO_ASSETS](docs/DEMO_ASSETS.md).
 - **Film storyboard and regeneration:** [DEMO_STORYBOARD](docs/DEMO_STORYBOARD.md).

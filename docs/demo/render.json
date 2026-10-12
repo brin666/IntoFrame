@@ -4,8 +4,54 @@
   "width": 1920,
   "height": 1080,
   "fps": 30,
-  "durationInFrames": 1890,
-  "bytes": 6014065,
-  "sha256": "43ad44dbea3ac6b1b8a7be10862405e7215222d90758870691ba80b135aca0c7",
-  "seconds": 148.195
+  "durationInFrames": 4500,
+  "durationSeconds": 150,
+  "bytes": 10633772,
+  "sha256": "917275a5e60480971237289268fd02588337b9dc0bdb6cbef4ea98b174cd1143",
+  "renderSeconds": 339.696,
+  "probe": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080,
+        "r_frame_rate": "30/1",
+        "nb_read_frames": "4500",
+        "side_data_list": [
+          {}
+        ]
+      }
+    ],
+    "format": {
+      "duration": "150.000000"
+    }
+  },
+  "keyframes": [
+    60,
+    600,
+    1320,
+    1500,
+    1740,
+    1950,
+    2130,
+    2340,
+    2580,
+    2820,
+    3060,
+    3300,
+    3540,
+    3780,
+    4200
+  ],
+  "postRenderCorrection": {
+    "frames": [
+      2880,
+      3419
+    ],
+    "reason": "Clarify native RGB composite versus framed 2D layer illustration",
+    "method": "Render the affected chapter from current Remotion source; join normal-speed frame-counted chapters using a common MP4 timebase",
+    "trackTimescale": 15360
+  }
 }

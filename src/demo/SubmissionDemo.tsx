@@ -160,7 +160,7 @@ function AppShell({ state, onRetry }: { state: DemoState; onRetry: () => void })
           <span className="demo-brand-mark"><i /></span>
           <span>IntoFrame</span><span className="demo-brand-note">LOCAL PHOTO TOOL</span>
         </a>
-        <div className="demo-topbar-right"><span className="demo-status-dot" /> Sample film <span className="demo-divider">/</span> 63 sec</div>
+        <div className="demo-topbar-right"><span className="demo-status-dot" /> Architecture film <span className="demo-divider">/</span> {formatTime(SUBMISSION_DURATION_IN_FRAMES)}</div>
       </header>
 
       <section className="demo-hero">
@@ -169,7 +169,7 @@ function AppShell({ state, onRetry }: { state: DemoState; onRetry: () => void })
             <span className="demo-eyebrow">ONE PHOTO, A NEW FRAME</span>
             <h1>A subject-aware reveal, in the browser.</h1>
           </div>
-          <p>See the original photo transition into a new sky and cinematic frame, then watch the actual local interaction recording.</p>
+          <p>Explore building photos, three sky styles, and the real upload-to-download workflow in this two-and-a-half-minute film.</p>
         </div>
 
         <div className="demo-player-card">

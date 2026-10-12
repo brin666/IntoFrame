@@ -20,7 +20,7 @@ try {
   page.on("pageerror",e=>errors.push(e.message));
   await page.goto(base,{waitUntil:"networkidle"});
   await page.locator(".sample-card").last().waitFor();
-  check("Gallery contains four actual sample photos",await page.locator(".sample-card").count()===4);
+  check("Gallery contains the accepted building examples",await page.locator(".sample-card").count()===manifest.samples.length && manifest.samples.every(s=>s.category==="architecture"));
   await page.screenshot({path:resolve(out,"gallery.png"),fullPage:true});
   for(const sample of manifest.samples) {
     await page.goto(`${base}/?sample=${sample.id}`,{waitUntil:"networkidle"});
@@ -51,8 +51,15 @@ try {
     await page.getByRole("button",{name:"Skip animation",exact:true}).click();await stage.waitFor();
     await stage.scrollIntoViewIfNeeded();const box=await stage.boundingBox();assert(box);
     await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();
-    await page.mouse.move(box.x+box.width*.8,box.y+box.height*.5,{steps:30});await page.waitForTimeout(600);
+    const leftTravel=Number(await stage.getAttribute("data-left-travel"));
+    const rightTravel=Number(await stage.getAttribute("data-right-travel"));
+    // A source-side cut can legitimately prohibit one direction. Explore the
+    // allowed side without weakening the renderer's cut safety.
+    const dragFraction=leftTravel>=rightTravel && leftTravel>.0001 ? .8 : .2;
+    await page.mouse.move(box.x+box.width*dragFraction,box.y+box.height*.5,{steps:30});await page.waitForTimeout(600);
     check(`${sample.id}: real drag controls virtual camera`,await stage.getAttribute("data-motion-mode")==="drag"&&Math.abs(Number(await stage.getAttribute("data-camera-x")))>.0001);
+    const camera=Number(await stage.getAttribute("data-camera-x"));
+    check(`${sample.id}: source-cut travel limits remain respected`,camera>=-leftTravel-.0001&&camera<=rightTravel+.0001,{camera,leftTravel,rightTravel});
     await page.mouse.up();
     await page.waitForFunction(()=>document.querySelector(".photo-stage")?.getAttribute("data-motion-mode")==="autonomous",null,{timeout:6000});
     check(`${sample.id}: release resumes bounded drift`,await stage.getAttribute("data-motion-mode")==="autonomous");
@@ -64,6 +71,13 @@ try {
   const play=page.getByRole("button",{name:"Play film",exact:true});await play.click();
   await page.waitForTimeout(1800);await page.getByRole("button",{name:"Pause film",exact:true}).click();
   check("Remotion film plays and pauses",await play.isVisible());
+  const scrub=page.getByRole("slider",{name:"Scrub through the demo film"});
+  check("Film timeline is exactly 150 seconds",await scrub.getAttribute("max")==="4499");
+  for (const frame of [600,1320,2340,3300,3660,4200]) {
+    await scrub.fill(String(frame));
+    await page.waitForTimeout(400);
+    check(`Film chapter at frame ${frame} renders`,await page.locator(".demo-player-frame").isVisible() && await page.locator(".demo-player-failure").count()===0);
+  }
   await page.screenshot({path:resolve(out,"film-player.png"),fullPage:true});
   const mp4=await fetch(new URL("/demo/IntoFrame-demo.mp4",base));
   check("Full MP4 is served",mp4.ok && Number(mp4.headers.get("content-length"))>1000000);

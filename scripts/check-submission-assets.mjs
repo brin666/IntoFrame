@@ -6,7 +6,7 @@ import { resolve, relative, sep } from "node:path";
 const publicRoot = resolve("public");
 const manifest = JSON.parse(readFileSync(resolve(publicRoot, "samples/manifest.json"), "utf8"));
 assert.equal(manifest.version, 1);
-assert(manifest.samples.length >= 4, "The submitted bundle requires four real examples.");
+assert(manifest.samples.length >= 3 && manifest.samples.every(s => s.category === "architecture"), "The submitted bundle requires at least three building examples.");
 const mediaKeys = new Set(["sourceUrl", "maskUrl", "subjectUrl", "backgroundUrl", "renderBackgroundUrl",
   "renderSkyUrl", "renderSceneUrl", "editableSkyUrl", "depthUrl", "renderDepthUrl", "meshDepthUrl", "compositeUrl", "thumbnailUrl"]);
 const paths = new Set();
@@ -56,9 +56,13 @@ for (const path of files) {
 }
 const mp4 = resolve(publicRoot,"demo/IntoFrame-demo.mp4");
 assert(existsSync(mp4), "The submitted MP4 has not been rendered.");
+for (const name of ["workflow.webm", "architecture-interaction.webm"])
+  assert(existsSync(resolve(publicRoot, "demo", name)), `Missing real recording: ${name}`);
+const demoMediaHashes = Object.fromEntries(["IntoFrame-demo.mp4", "workflow.webm", "architecture-interaction.webm"].map(name =>
+  [`/demo/${name}`, createHash("sha256").update(readFileSync(resolve(publicRoot,"demo",name))).digest("hex")]));
 const report = { samples: [...ids], styles: manifest.samples.length * 3, resourceCount: paths.size,
   publicMiB: Number((files.reduce((sum,path)=>sum+statSync(path).size,0)/1024/1024).toFixed(2)),
-  movieBytes: statSync(mp4).size, hashes,
+  movieBytes: statSync(mp4).size, hashes, demoMediaHashes,
 };
 const inventory = resolve(publicRoot,"samples/asset-hashes.json");
 if (process.argv.includes("--update-hashes")) {
@@ -67,6 +71,7 @@ if (process.argv.includes("--update-hashes")) {
   const saved = JSON.parse(readFileSync(inventory,"utf8"));
   assert.deepEqual(hashes,saved.hashes,"Packaged media differs from the saved submission inventory");
   assert.equal(report.movieBytes,saved.movieBytes,"Submitted video size changed");
+  assert.deepEqual(report.demoMediaHashes,saved.demoMediaHashes,"Submitted film or recording changed");
 }
 mkdirSync(resolve("screenshots"),{recursive:true});
 writeFileSync(resolve("screenshots/submission-asset-check.json"),JSON.stringify(report,null,2));
